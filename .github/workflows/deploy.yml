@@ -8,9 +8,9 @@ name: Build & Deploy
 
 on:
   push:
-    branches: [main]
+    branches: [master]
   pull_request:
-    branches: [main]
+    branches: [master]
   workflow_dispatch:
     inputs:
       deploy_target:
@@ -116,7 +116,7 @@ jobs:
   deploy-preprod:
     name: Deploy to Pre-prod
     needs: build
-    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    if: github.ref == 'refs/heads/master' && github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     environment: preprod
 
@@ -134,7 +134,7 @@ jobs:
       - name: Get secrets from Key Vault
         id: kv
         run: |
-          VAULT="${{ secrets.KEYVAULT_NAME_PREPROD }}"
+          VAULT="${{ secrets.KEYVAULT_NAME }}"
           DB_URL=$(az keyvault secret show --vault-name $VAULT --name database-url --query value -o tsv)
           echo "::add-mask::$DB_URL"
           echo "database_url=$DB_URL" >> $GITHUB_OUTPUT
@@ -173,7 +173,7 @@ jobs:
     needs: [build, deploy-preprod]
     if: |
       (github.event_name == 'workflow_dispatch' && github.event.inputs.deploy_target == 'prod') ||
-      (github.ref == 'refs/heads/main' && github.event_name == 'push')
+      (github.ref == 'refs/heads/master' && github.event_name == 'push')
     runs-on: ubuntu-latest
     environment: production # Requires manual approval in GitHub
 
@@ -191,7 +191,7 @@ jobs:
       - name: Get secrets from Key Vault
         id: kv
         run: |
-          VAULT="${{ secrets.KEYVAULT_NAME_PROD }}"
+          VAULT="${{ secrets.KEYVAULT_NAME }}"
           DB_URL=$(az keyvault secret show --vault-name $VAULT --name database-url --query value -o tsv)
           echo "::add-mask::$DB_URL"
           echo "database_url=$DB_URL" >> $GITHUB_OUTPUT

@@ -24,7 +24,7 @@ param skuTier string
 @description('Storage size in GB')
 param storageSizeGB int
 
-resource postgresql 'Microsoft.DBforPostgreSQL/flexibleServers@2023-03-01-preview' = {
+resource postgresql 'Microsoft.DBforPostgreSQL/flexibleServers@2024-08-01' = {
   name: name
   location: location
   tags: tags
@@ -50,7 +50,7 @@ resource postgresql 'Microsoft.DBforPostgreSQL/flexibleServers@2023-03-01-previe
 }
 
 // Allow Azure services to access
-resource firewallRule 'Microsoft.DBforPostgreSQL/flexibleServers/firewallRules@2023-03-01-preview' = {
+resource firewallRule 'Microsoft.DBforPostgreSQL/flexibleServers/firewallRules@2024-08-01' = {
   parent: postgresql
   name: 'AllowAzureServices'
   properties: {
@@ -60,7 +60,7 @@ resource firewallRule 'Microsoft.DBforPostgreSQL/flexibleServers/firewallRules@2
 }
 
 // Create the blog database
-resource database 'Microsoft.DBforPostgreSQL/flexibleServers/databases@2023-03-01-preview' = {
+resource database 'Microsoft.DBforPostgreSQL/flexibleServers/databases@2024-08-01' = {
   parent: postgresql
   name: 'blogdb'
   properties: {
