@@ -16,7 +16,7 @@ param nodeCount int
 @description('Log Analytics workspace resource ID')
 param logAnalyticsWorkspaceId string
 
-resource aks 'Microsoft.ContainerService/managedClusters@2024-01-01' = {
+resource aks 'Microsoft.ContainerService/managedClusters@2024-09-01' = {
   name: name
   location: location
   tags: tags
@@ -25,7 +25,7 @@ resource aks 'Microsoft.ContainerService/managedClusters@2024-01-01' = {
   }
   properties: {
     dnsPrefix: name
-    kubernetesVersion: '1.29'
+    kubernetesVersion: '1.33'
     networkProfile: {
       networkPlugin: 'azure'
       networkPolicy: 'calico'

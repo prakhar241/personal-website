@@ -164,6 +164,10 @@ module secrets 'modules/keyvault-secrets.bicep' = {
         name: 'azure-storage-account-key'
         value: storage.outputs.primaryKey
       }
+      {
+        name: 'acr-login-server'
+        value: acr.outputs.loginServer
+      }
     ]
   }
 }
