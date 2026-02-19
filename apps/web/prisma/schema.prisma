@@ -1,0 +1,189 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================
+// User & Auth
+// ============================================
+
+enum Role {
+  ADMIN
+  PUBLIC
+}
+
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  name          String?
+  image         String?
+  role          Role      @default(PUBLIC)
+  emailVerified DateTime?
+  accounts      Account[]
+  sessions      Session[]
+  posts         Post[]
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@map("users")
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@map("accounts")
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("sessions")
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+  @@map("verification_tokens")
+}
+
+// ============================================
+// Blog Posts
+// ============================================
+
+enum PostStatus {
+  DRAFT
+  PUBLISHED
+}
+
+model Post {
+  id              String     @id @default(cuid())
+  title           String
+  slug            String     @unique
+  excerpt         String?    @db.Text
+  markdownContent String     @db.Text
+  htmlContent     String?    @db.Text
+  coverImageUrl   String?
+  status          PostStatus @default(DRAFT)
+  tags            String[]
+  authorId        String
+  author          User       @relation(fields: [authorId], references: [id])
+  comments        Comment[]
+  likes           Like[]
+  views           PageView[]
+  publishedAt     DateTime?
+  createdAt       DateTime   @default(now())
+  updatedAt       DateTime   @updatedAt
+
+  @@index([status, publishedAt(sort: Desc)])
+  @@index([slug])
+  @@map("posts")
+}
+
+// ============================================
+// Static Pages (About, Contact, etc.)
+// ============================================
+
+model StaticPage {
+  id              String   @id @default(cuid())
+  slug            String   @unique
+  title           String
+  markdownContent String   @db.Text
+  htmlContent     String?  @db.Text
+  sortOrder       Int      @default(0)
+  isVisible       Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@map("static_pages")
+}
+
+// ============================================
+// Comments
+// ============================================
+
+model Comment {
+  id         String   @id @default(cuid())
+  postId     String
+  post       Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  authorName String
+  authorEmail String?
+  body       String   @db.Text
+  isRead     Boolean  @default(false)
+  isApproved Boolean  @default(true)
+  createdAt  DateTime @default(now())
+
+  @@index([postId, createdAt(sort: Desc)])
+  @@map("comments")
+}
+
+// ============================================
+// Likes
+// ============================================
+
+model Like {
+  id                 String   @id @default(cuid())
+  postId             String
+  post               Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  visitorFingerprint String
+  createdAt          DateTime @default(now())
+
+  @@unique([postId, visitorFingerprint])
+  @@map("likes")
+}
+
+// ============================================
+// Page Views & Telemetry
+// ============================================
+
+model PageView {
+  id         String   @id @default(cuid())
+  pagePath   String
+  postId     String?
+  post       Post?    @relation(fields: [postId], references: [id], onDelete: SetNull)
+  visitorId  String?
+  referrer   String?
+  userAgent  String?
+  country    String?
+  createdAt  DateTime @default(now())
+
+  @@index([pagePath, createdAt(sort: Desc)])
+  @@index([postId])
+  @@map("page_views")
+}
+
+model LinkClick {
+  id         String   @id @default(cuid())
+  pagePath   String
+  targetUrl  String
+  linkText   String?
+  visitorId  String?
+  createdAt  DateTime @default(now())
+
+  @@index([pagePath, createdAt(sort: Desc)])
+  @@map("link_clicks")
+}
