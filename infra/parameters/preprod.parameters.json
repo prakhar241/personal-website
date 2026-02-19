@@ -1,0 +1,27 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "environment": {
+      "value": "preprod"
+    },
+    "baseName": {
+      "value": "blog"
+    },
+    "adminEmail": {
+      "value": "prakharbansal1@gmail.com"
+    },
+    "dbAdminUsername": {
+      "value": "blogadmin"
+    },
+    "dbAdminPassword": {
+      "value": "NO9n5g5XL0eKfXrejBjfmf5G"
+    },
+    "aksNodeVmSize": {
+      "value": "Standard_B2s"
+    },
+    "aksNodeCount": {
+      "value": 1
+    }
+  }
+}

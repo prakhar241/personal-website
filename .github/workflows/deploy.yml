@@ -1,0 +1,223 @@
+# =============================================
+# CI/CD Pipeline for Personal Blog
+# Two-stage: preprod (auto) → prod (manual)
+# Uses Azure Key Vault for secrets via OIDC
+# =============================================
+
+name: Build & Deploy
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      deploy_target:
+        description: "Deploy target"
+        required: true
+        default: "preprod"
+        type: choice
+        options:
+          - preprod
+          - prod
+
+permissions:
+  id-token: write # Required for OIDC
+  contents: read
+
+env:
+  AZURE_SUBSCRIPTION_ID: "8f38adfa-039a-49c0-b063-e935ac1520da"
+  ACR_NAME: "blogacr" # Will be overridden by infra output
+  IMAGE_NAME: "blog-web"
+
+jobs:
+  # ==========================================
+  # Job 1: Build & Test
+  # ==========================================
+  build:
+    name: Build & Test
+    runs-on: ubuntu-latest
+    outputs:
+      image_tag: ${{ steps.meta.outputs.version }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+        working-directory: apps/web
+
+      - name: Lint
+        run: npm run lint
+        working-directory: apps/web
+
+      - name: Generate Prisma client
+        run: npx prisma generate
+        working-directory: apps/web
+
+      - name: Build Next.js
+        run: npm run build
+        working-directory: apps/web
+        env:
+          DATABASE_URL: "postgresql://fake:fake@localhost:5432/fake"
+
+      - name: Azure Login (OIDC)
+        if: github.event_name != 'pull_request'
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ env.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Get ACR login server from Key Vault
+        if: github.event_name != 'pull_request'
+        id: kv
+        run: |
+          ACR_SERVER=$(az keyvault secret show --vault-name ${{ secrets.KEYVAULT_NAME }} --name acr-login-server --query value -o tsv)
+          echo "acr_server=$ACR_SERVER" >> $GITHUB_OUTPUT
+
+      - name: Login to ACR
+        if: github.event_name != 'pull_request'
+        uses: azure/docker-login@v2
+        with:
+          login-server: ${{ steps.kv.outputs.acr_server }}
+
+      - name: Docker meta
+        if: github.event_name != 'pull_request'
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ steps.kv.outputs.acr_server }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=sha,prefix=
+            type=ref,event=branch
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      - name: Build and push Docker image
+        if: github.event_name != 'pull_request'
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: apps/web/Dockerfile
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+
+  # ==========================================
+  # Job 2: Deploy to Pre-prod (auto on main)
+  # ==========================================
+  deploy-preprod:
+    name: Deploy to Pre-prod
+    needs: build
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    environment: preprod
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Azure Login (OIDC)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ env.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Get secrets from Key Vault
+        id: kv
+        run: |
+          VAULT="${{ secrets.KEYVAULT_NAME_PREPROD }}"
+          DB_URL=$(az keyvault secret show --vault-name $VAULT --name database-url --query value -o tsv)
+          echo "::add-mask::$DB_URL"
+          echo "database_url=$DB_URL" >> $GITHUB_OUTPUT
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install dependencies & run migrations
+        run: |
+          cd apps/web
+          npm ci
+          npx prisma migrate deploy
+        env:
+          DATABASE_URL: ${{ steps.kv.outputs.database_url }}
+
+      - name: Get AKS credentials
+        run: |
+          az aks get-credentials \
+            --resource-group rg-blog-preprod \
+            --name blog-preprod-aks \
+            --overwrite-existing
+
+      - name: Deploy to AKS (preprod)
+        run: |
+          kubectl apply -k k8s/overlays/preprod
+          kubectl -n blog-preprod rollout restart deployment/preprod-web
+          kubectl -n blog-preprod rollout status deployment/preprod-web --timeout=300s
+
+  # ==========================================
+  # Job 3: Deploy to Prod (manual approval)
+  # ==========================================
+  deploy-prod:
+    name: Deploy to Production
+    needs: [build, deploy-preprod]
+    if: |
+      (github.event_name == 'workflow_dispatch' && github.event.inputs.deploy_target == 'prod') ||
+      (github.ref == 'refs/heads/main' && github.event_name == 'push')
+    runs-on: ubuntu-latest
+    environment: production # Requires manual approval in GitHub
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Azure Login (OIDC)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ env.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Get secrets from Key Vault
+        id: kv
+        run: |
+          VAULT="${{ secrets.KEYVAULT_NAME_PROD }}"
+          DB_URL=$(az keyvault secret show --vault-name $VAULT --name database-url --query value -o tsv)
+          echo "::add-mask::$DB_URL"
+          echo "database_url=$DB_URL" >> $GITHUB_OUTPUT
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install dependencies & run migrations
+        run: |
+          cd apps/web
+          npm ci
+          npx prisma migrate deploy
+        env:
+          DATABASE_URL: ${{ steps.kv.outputs.database_url }}
+
+      - name: Get AKS credentials
+        run: |
+          az aks get-credentials \
+            --resource-group rg-blog-prod \
+            --name blog-prod-aks \
+            --overwrite-existing
+
+      - name: Deploy to AKS (prod)
+        run: |
+          kubectl apply -k k8s/overlays/prod
+          kubectl -n blog-prod rollout restart deployment/prod-web
+          kubectl -n blog-prod rollout status deployment/prod-web --timeout=300s
