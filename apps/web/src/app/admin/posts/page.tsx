@@ -4,6 +4,7 @@ import { formatDate } from "@/lib/utils";
 import { Plus, Edit3, Eye, Globe, FileText } from "lucide-react";
 import type { Metadata } from "next";
 
+export const dynamic = 'force-dynamic';
 export const metadata: Metadata = { title: "Manage Posts" };
 
 export default async function AdminPostsPage() {

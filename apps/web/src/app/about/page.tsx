@@ -4,6 +4,7 @@ import { Footer } from "@/components/layout/Footer";
 import prisma from "@/lib/prisma";
 import type { Metadata } from "next";
 
+export const dynamic = 'force-dynamic';
 export const metadata: Metadata = { title: "About" };
 
 export default async function AboutPage() {
