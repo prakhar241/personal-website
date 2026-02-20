@@ -4,6 +4,7 @@ import { PostCard } from "@/components/blog/PostCard";
 import prisma from "@/lib/prisma";
 import type { Metadata } from "next";
 
+export const dynamic = 'force-dynamic';
 export const metadata: Metadata = {
   title: "Blog",
   description: "Read my latest articles and thoughts on technology.",
