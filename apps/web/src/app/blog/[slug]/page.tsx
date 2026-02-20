@@ -9,6 +9,8 @@ import { formatDate, readingTime, absoluteUrl } from "@/lib/utils";
 import { Clock, Calendar } from "lucide-react";
 import type { Metadata } from "next";
 
+export const dynamic = 'force-dynamic';
+
 interface Props {
   params: { slug: string };
 }
