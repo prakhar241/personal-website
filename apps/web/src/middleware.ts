@@ -22,10 +22,11 @@ export default withAuth(
         if (!req.nextUrl.pathname.startsWith("/admin")) {
           return true;
         }
-        // Admin routes need a token
+        // Admin routes need a valid JWT token
         return !!token;
       },
     },
+    secret: process.env.NEXTAUTH_SECRET,
   }
 );
 
