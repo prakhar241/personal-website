@@ -6,8 +6,6 @@ namespace: blog-preprod
 resources:
   - ../../base
 
-namePrefix: preprod-
-
 patches:
   # Override namespace
   - target:
@@ -18,7 +16,7 @@ patches:
         path: /metadata/name
         value: blog-preprod
 
-  # Single replica for preprod
+  # Single replica with reduced resources for preprod
   - target:
       kind: Deployment
       name: web
@@ -38,18 +36,6 @@ patches:
       - op: replace
         path: /spec/template/spec/containers/0/resources/limits/memory
         value: "256Mi"
-
-  # Preprod domain
-  - target:
-      kind: Ingress
-      name: web-ingress
-    patch: |
-      - op: replace
-        path: /spec/tls/0/hosts/0
-        value: preprod.PLACEHOLDER_DOMAIN
-      - op: replace
-        path: /spec/rules/0/host
-        value: preprod.PLACEHOLDER_DOMAIN
 
 commonLabels:
   environment: preprod
