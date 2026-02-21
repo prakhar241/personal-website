@@ -5,8 +5,6 @@ resources:
   - namespace.yaml
   - web-deployment.yaml
   - web-service.yaml
-  - ingress.yaml
-  - secrets-provider.yaml
 
 commonLabels:
   app.kubernetes.io/part-of: personal-blog
