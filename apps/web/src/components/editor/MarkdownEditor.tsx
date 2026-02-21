@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef } from "react";
 import dynamic from "next/dynamic";
-import { Eye, Edit3, Save, Send, ArrowLeft } from "lucide-react";
+import { Eye, Edit3, Save, Send, ArrowLeft, ImagePlus, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -44,6 +44,34 @@ export function MarkdownEditor({
   const [tags, setTags] = useState(initialTags.join(", "));
   const [coverUrl, setCoverUrl] = useState(initialCoverUrl);
   const [mode, setMode] = useState<"edit" | "preview" | "split">("split");
+  const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const uploadImage = useCallback(async (file: File, setCover: boolean = false) => {
+    setUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      const res = await fetch("/api/upload", { method: "POST", body: formData });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Upload failed");
+
+      // Insert markdown image at cursor / end of content
+      const mdImage = `![${file.name}](${data.url})`;
+      setContent((prev) => prev + "\n\n" + mdImage);
+
+      // Optionally set as cover image
+      if (setCover || !coverUrl) {
+        setCoverUrl(data.url);
+      }
+
+      return data.url;
+    } catch (err: any) {
+      alert(err.message || "Image upload failed");
+    } finally {
+      setUploading(false);
+    }
+  }, [coverUrl]);
 
   const handleSave = useCallback(
     async (status: "DRAFT" | "PUBLISHED") => {
@@ -105,6 +133,32 @@ export function MarkdownEditor({
         </div>
 
         <div className="flex items-center gap-2">
+          {/* Image Upload Button */}
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              if (file) uploadImage(file);
+              e.target.value = "";
+            }}
+          />
+          <button
+            onClick={() => fileInputRef.current?.click()}
+            disabled={uploading}
+            className="flex items-center gap-1 rounded-lg border border-border px-3 py-2 text-sm font-medium hover:bg-accent disabled:opacity-50 transition-colors"
+            title="Upload image"
+          >
+            {uploading ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <ImagePlus className="h-4 w-4" />
+            )}
+            {uploading ? "Uploading..." : "Image"}
+          </button>
+
           <button
             onClick={() => handleSave("DRAFT")}
             disabled={saving || !title.trim() || !content.trim()}

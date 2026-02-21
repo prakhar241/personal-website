@@ -19,6 +19,7 @@
   "dependencies": {
     "@azure/identity": "^4.2.0",
     "@azure/keyvault-secrets": "^4.8.0",
+    "@azure/storage-blob": "^12.31.0",
     "@fingerprintjs/fingerprintjs": "^4.2.0",
     "@microsoft/applicationinsights-web": "^3.1.0",
     "@next-auth/prisma-adapter": "^1.0.7",
