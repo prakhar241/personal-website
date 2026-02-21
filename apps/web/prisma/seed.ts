@@ -1,18 +1,25 @@
 import { PrismaClient, Role, PostStatus } from "@prisma/client";
+import bcrypt from "bcryptjs";
 
 const prisma = new PrismaClient();
 
 async function main() {
   console.log("🌱 Seeding database...");
 
-  // Create admin user (placeholder - will be created on first login)
+  // Hash the admin password from env or use default
+  const adminPassword = process.env.ADMIN_PASSWORD || "Admin@2026";
+  const adminEmail = process.env.ADMIN_EMAIL || "prakharbansal1@gmail.com";
+  const passwordHash = await bcrypt.hash(adminPassword, 12);
+
+  // Create admin user with credentials
   const admin = await prisma.user.upsert({
-    where: { email: "admin@example.com" },
-    update: {},
+    where: { email: adminEmail },
+    update: { passwordHash, role: Role.ADMIN },
     create: {
-      email: "admin@example.com",
-      name: "Admin",
+      email: adminEmail,
+      name: "Prakhar Bansal",
       role: Role.ADMIN,
+      passwordHash,
     },
   });
 
