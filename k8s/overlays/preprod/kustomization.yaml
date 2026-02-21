@@ -5,6 +5,7 @@ namespace: blog-preprod
 
 resources:
   - ../../base
+  - ingress.yaml
 
 patches:
   # Override namespace
