@@ -2,12 +2,13 @@ import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
 import { PostCard } from "@/components/blog/PostCard";
 import prisma from "@/lib/prisma";
+import { strings } from "@/lib/strings";
 import type { Metadata } from "next";
 
 export const dynamic = 'force-dynamic';
 export const metadata: Metadata = {
-  title: "Blog",
-  description: "Read my latest articles and thoughts on technology.",
+  title: strings.nav.blog,
+  description: strings.blog.metaDescription,
 };
 
 export default async function BlogPage({
@@ -60,10 +61,10 @@ export default async function BlogPage({
       <Navbar />
       <main className="flex-1 mx-auto max-w-5xl px-4 py-12">
         <h1 className="text-3xl font-bold tracking-tight text-foreground mb-2">
-          Blog
+          {strings.blog.title}
         </h1>
         <p className="text-muted-foreground mb-8">
-          Thoughts, tutorials, and insights on software development.
+          {strings.blog.description}
         </p>
 
         {/* Tag Filter */}
@@ -77,7 +78,7 @@ export default async function BlogPage({
                   : "bg-muted text-muted-foreground hover:bg-accent"
               }`}
             >
-              All
+              {strings.common.all}
             </a>
             {uniqueTags.map((t) => (
               <a
@@ -107,7 +108,7 @@ export default async function BlogPage({
             <p className="text-muted-foreground">
               {tag
                 ? `No posts found with tag "${tag}".`
-                : "No posts yet. Check back soon!"}
+                : strings.home.noPostsYet}
             </p>
           </div>
         )}
@@ -120,7 +121,7 @@ export default async function BlogPage({
                 href={`/blog?page=${page - 1}${tag ? `&tag=${tag}` : ""}`}
                 className="rounded-lg border border-border px-4 py-2 text-sm hover:bg-accent transition-colors"
               >
-                Previous
+                {strings.blog.prevPage}
               </a>
             )}
             <span className="text-sm text-muted-foreground px-4">
@@ -131,7 +132,7 @@ export default async function BlogPage({
                 href={`/blog?page=${page + 1}${tag ? `&tag=${tag}` : ""}`}
                 className="rounded-lg border border-border px-4 py-2 text-sm hover:bg-accent transition-colors"
               >
-                Next
+                {strings.blog.nextPage}
               </a>
             )}
           </div>

@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { Heart } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { trackLike } from "@/lib/telemetry";
+import { strings } from "@/lib/strings";
 
 interface LikeButtonProps {
   slug: string;
@@ -78,7 +79,7 @@ export function LikeButton({ slug, initialCount }: LikeButtonProps) {
           ? "bg-red-50 text-red-600 dark:bg-red-950/30 dark:text-red-400"
           : "bg-muted text-muted-foreground hover:bg-accent hover:text-foreground"
       )}
-      aria-label={liked ? "Unlike this post" : "Like this post"}
+      aria-label={liked ? strings.likes.liked : strings.likes.like}
     >
       <Heart
         className={cn("h-4 w-4 transition-all", liked && "fill-current scale-110")}

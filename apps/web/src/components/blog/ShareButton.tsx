@@ -3,6 +3,7 @@
 import { Share2, Copy, Check } from "lucide-react";
 import { useState } from "react";
 import { trackShare } from "@/lib/telemetry";
+import { strings } from "@/lib/strings";
 
 interface ShareButtonProps {
   url: string;
@@ -37,12 +38,12 @@ export function ShareButton({ url, title }: ShareButtonProps) {
       {copied ? (
         <>
           <Check className="h-4 w-4 text-green-500" />
-          <span>Copied!</span>
+          <span>{strings.share.linkCopied}</span>
         </>
       ) : (
         <>
           <Share2 className="h-4 w-4" />
-          <span>Share</span>
+          <span>{strings.share.share}</span>
         </>
       )}
     </button>
