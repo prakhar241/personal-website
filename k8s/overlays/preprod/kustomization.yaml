@@ -38,5 +38,5 @@ patches:
         path: /spec/template/spec/containers/0/resources/limits/memory
         value: "256Mi"
 
-commonLabels:
-  environment: preprod
+# Note: Removed commonLabels as it modifies service selectors
+# but not deployment pod template labels, causing endpoint mismatch
