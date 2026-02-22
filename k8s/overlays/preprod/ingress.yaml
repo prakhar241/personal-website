@@ -11,9 +11,20 @@ spec:
   tls:
     - hosts:
         - prakharbansal.in
+        - www.prakharbansal.in
       secretName: prakharbansal-tls
   rules:
     - host: prakharbansal.in
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: web
+                port:
+                  number: 80
+    - host: www.prakharbansal.in
       http:
         paths:
           - path: /
