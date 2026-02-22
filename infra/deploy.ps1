@@ -9,7 +9,8 @@ param(
     [string]$Environment,
 
     [string]$Location = "eastus",
-    [string]$SubscriptionId = "REDACTED_SUBSCRIPTION_ID"
+    [Parameter(Mandatory = $true)]
+    [string]$SubscriptionId
 )
 
 $ErrorActionPreference = "Stop"

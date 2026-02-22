@@ -6,9 +6,15 @@ const prisma = new PrismaClient();
 async function main() {
   console.log("🌱 Seeding database...");
 
-  // Hash the admin password from env or use default
-  const adminPassword = process.env.ADMIN_PASSWORD || "REDACTED_ADMIN_PASSWORD";
-  const adminEmail = process.env.ADMIN_EMAIL || "prakharbansal1@gmail.com";
+  // Hash the admin password from env (required - no fallback for security)
+  const adminPassword = process.env.ADMIN_PASSWORD;
+  if (!adminPassword) {
+    throw new Error("ADMIN_PASSWORD environment variable is required");
+  }
+  const adminEmail = process.env.ADMIN_EMAIL;
+  if (!adminEmail) {
+    throw new Error("ADMIN_EMAIL environment variable is required");
+  }
   const passwordHash = await bcrypt.hash(adminPassword, 12);
 
   // Create admin user with credentials
