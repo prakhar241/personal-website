@@ -155,14 +155,20 @@ jobs:
       - name: Deploy to AKS (preprod)
         run: |
           IMAGE="${{ env.ACR_LOGIN_SERVER }}/${{ env.IMAGE_NAME }}:${{ needs.build.outputs.image_tag }}"
-          kubectl -n blog-preprod set image deployment/web web=$IMAGE
+          
+          # Apply full kustomize overlay (includes ingress, service, deployment, etc.)
+          cd k8s/overlays/preprod
+          kustomize edit set image blogacruade2pz6fyows.azurecr.io/blog-web=$IMAGE
+          kubectl apply -k .
+          
+          # Wait for deployment rollout
           kubectl -n blog-preprod rollout status deployment/web --timeout=300s
 
       - name: Show deployment status
         if: always()
         run: |
           kubectl -n blog-preprod get pods -l app=web
-          kubectl -n blog-preprod get svc web
+          kubectl -n blog-preprod get svc,ingress -n blog-preprod
 
   # ==========================================
   # Job 3: Deploy to Prod (manual approval)
