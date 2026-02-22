@@ -43,3 +43,7 @@ docker-compose.override.yml
 
 # Coverage
 coverage/
+
+# Infrastructure secrets
+infra/parameters/*.parameters.json
+apps/web/query-db.js

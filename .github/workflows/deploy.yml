@@ -1,13 +1,16 @@
 # =============================================
 # CI/CD Pipeline for Personal Blog
-# Two-stage: preprod (auto) → prod (manual)
-# Uses OIDC for Azure authentication
+# - PR to master: build validation
+# - Merge to master: build + deploy to preprod
+# - Manual dispatch: deploy to prod
 # =============================================
 
 name: Build & Deploy
 
 on:
   push:
+    branches: [master]
+  pull_request:
     branches: [master]
   workflow_dispatch:
     inputs:
@@ -25,16 +28,54 @@ permissions:
   contents: read
 
 env:
-  AZURE_SUBSCRIPTION_ID: "REDACTED_SUBSCRIPTION_ID"
   ACR_LOGIN_SERVER: "blogacruade2pz6fyows.azurecr.io"
   IMAGE_NAME: "blog-web"
 
 jobs:
   # ==========================================
-  # Job 1: Build & Push Docker Image
+  # Job 1: Validate (runs on PRs)
+  # ==========================================
+  validate:
+    name: Validate
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install dependencies
+        run: npm ci
+        working-directory: apps/web
+
+      - name: Lint
+        run: npm run lint
+        working-directory: apps/web
+
+      - name: Generate Prisma client
+        run: npx prisma generate
+        working-directory: apps/web
+
+      - name: Build Next.js
+        run: npm run build
+        working-directory: apps/web
+        env:
+          DATABASE_URL: "postgresql://fake:fake@localhost:5432/fake"
+
+      - name: Docker build (no push)
+        run: docker build -f apps/web/Dockerfile -t ${{ env.IMAGE_NAME }}:test .
+
+  # ==========================================
+  # Job 2: Build & Push Docker Image (master only)
   # ==========================================
   build:
     name: Build & Push
+    if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     outputs:
       image_tag: ${{ steps.vars.outputs.sha_short }}
@@ -52,7 +93,7 @@ jobs:
         with:
           client-id: ${{ secrets.AZURE_CLIENT_ID }}
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
-          subscription-id: ${{ env.AZURE_SUBSCRIPTION_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
       - name: Login to ACR
         run: az acr login --name blogacruade2pz6fyows
@@ -82,7 +123,7 @@ jobs:
         with:
           client-id: ${{ secrets.AZURE_CLIENT_ID }}
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
-          subscription-id: ${{ env.AZURE_SUBSCRIPTION_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
       - name: Get database URL from Key Vault
         id: kv
@@ -142,7 +183,7 @@ jobs:
         with:
           client-id: ${{ secrets.AZURE_CLIENT_ID }}
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
-          subscription-id: ${{ env.AZURE_SUBSCRIPTION_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
       - name: Get database URL from Key Vault
         id: kv
