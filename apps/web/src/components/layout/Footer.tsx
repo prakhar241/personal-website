@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Heart } from "lucide-react";
+import { strings } from "@/lib/strings";
 
 export function Footer() {
   const currentYear = new Date().getFullYear();
@@ -10,16 +11,16 @@ export function Footer() {
         <div className="flex flex-col md:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-1 text-sm text-muted-foreground">
             <span>&copy; {currentYear}</span>
-            <span>{process.env.NEXT_PUBLIC_SITE_NAME || "My Blog"}.</span>
-            <span>Built with</span>
+            <span>{strings.common.siteName}.</span>
+            <span>{strings.common.builtWith}</span>
             <Heart className="h-3 w-3 text-red-500 fill-red-500" />
           </div>
           <div className="flex items-center gap-4 text-sm text-muted-foreground">
             <Link href="/about" className="hover:text-foreground transition-colors">
-              About
+              {strings.nav.about}
             </Link>
             <Link href="/contact" className="hover:text-foreground transition-colors">
-              Contact
+              {strings.nav.contact}
             </Link>
             <a
               href="/rss.xml"
@@ -27,7 +28,7 @@ export function Footer() {
               target="_blank"
               rel="noopener noreferrer"
             >
-              RSS
+              {strings.nav.rss}
             </a>
           </div>
         </div>

@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
 import prisma from "@/lib/prisma";
+import { strings } from "@/lib/strings";
 
 export const dynamic = 'force-dynamic';
 import { PostCard } from "@/components/blog/PostCard";
@@ -33,29 +34,27 @@ export default async function HomePage() {
         {/* Hero Section */}
         <section className="mx-auto max-w-5xl px-4 py-16 md:py-24">
           <h1 className="text-4xl font-bold tracking-tight text-foreground sm:text-5xl md:text-6xl">
-            Hey, I&apos;m{" "}
-            <span className="text-brand-500">a developer</span>
+            {strings.home.heroGreeting}{" "}
+            <span className="text-brand-500">{strings.home.heroHighlight}</span>
             <br />
-            with flavour.
+            {strings.home.heroSuffix}
           </h1>
           <p className="mt-4 max-w-2xl text-lg text-muted-foreground">
-            Welcome to my corner of the internet. I write about software
-            development, technology, and the things I&apos;m building. Grab a
-            coffee and stay a while.
+            {strings.home.heroDescription}
           </p>
           <div className="mt-8 flex gap-4">
             <Link
               href="/blog"
               className="inline-flex items-center gap-2 rounded-lg bg-brand-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-brand-700 transition-colors"
             >
-              Read the Blog
+              {strings.home.readBlog}
               <ArrowRight className="h-4 w-4" />
             </Link>
             <Link
               href="/about"
               className="inline-flex items-center gap-2 rounded-lg border border-border px-5 py-2.5 text-sm font-medium text-foreground hover:bg-accent transition-colors"
             >
-              About Me
+              {strings.home.aboutMe}
             </Link>
           </div>
         </section>
@@ -64,13 +63,13 @@ export default async function HomePage() {
         <section className="mx-auto max-w-5xl px-4 pb-16">
           <div className="flex items-center justify-between mb-8">
             <h2 className="text-2xl font-bold tracking-tight text-foreground">
-              Recent Posts
+              {strings.home.recentPosts}
             </h2>
             <Link
               href="/blog"
               className="text-sm font-medium text-brand-600 hover:text-brand-700 flex items-center gap-1"
             >
-              View all
+              {strings.common.viewAll}
               <ArrowRight className="h-3 w-3" />
             </Link>
           </div>
@@ -82,7 +81,7 @@ export default async function HomePage() {
             </div>
           ) : (
             <p className="text-muted-foreground">
-              No posts yet. Check back soon!
+              {strings.home.noPostsYet}
             </p>
           )}
         </section>

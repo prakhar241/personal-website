@@ -15,6 +15,7 @@ import {
   PenSquare,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { strings } from "@/lib/strings";
 
 export function Navbar() {
   const { data: session } = useSession();
@@ -23,10 +24,10 @@ export function Navbar() {
   const isAdmin = session?.user?.role === "ADMIN";
 
   const navLinks = [
-    { href: "/", label: "Home" },
-    { href: "/blog", label: "Blog" },
-    { href: "/about", label: "About" },
-    { href: "/contact", label: "Contact" },
+    { href: "/", label: strings.nav.home },
+    { href: "/blog", label: strings.nav.blog },
+    { href: "/about", label: strings.nav.about },
+    { href: "/contact", label: strings.nav.contact },
   ];
 
   return (
@@ -59,14 +60,14 @@ export function Navbar() {
                 className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1"
               >
                 <LayoutDashboard className="h-4 w-4" />
-                Dashboard
+                {strings.nav.dashboard}
               </Link>
               <Link
                 href="/admin/posts"
                 className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1"
               >
                 <PenSquare className="h-4 w-4" />
-                Posts
+                {strings.nav.posts}
               </Link>
             </>
           )}
@@ -88,7 +89,7 @@ export function Navbar() {
               className="flex items-center gap-1 rounded-md px-3 py-1.5 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
             >
               <LogOut className="h-4 w-4" />
-              Sign Out
+              {strings.nav.signOut}
             </button>
           ) : (
             <button
@@ -96,7 +97,7 @@ export function Navbar() {
               className="flex items-center gap-1 rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
             >
               <LogIn className="h-4 w-4" />
-              Admin
+              {strings.nav.admin}
             </button>
           )}
         </div>
@@ -135,14 +136,14 @@ export function Navbar() {
                 className="block text-sm font-medium text-muted-foreground hover:text-foreground"
                 onClick={() => setMobileMenuOpen(false)}
               >
-                Dashboard
+                {strings.nav.dashboard}
               </Link>
               <Link
                 href="/admin/posts"
                 className="block text-sm font-medium text-muted-foreground hover:text-foreground"
                 onClick={() => setMobileMenuOpen(false)}
               >
-                Manage Posts
+                {strings.nav.posts}
               </Link>
             </>
           )}
@@ -162,14 +163,14 @@ export function Navbar() {
                 onClick={() => signOut()}
                 className="text-sm text-muted-foreground"
               >
-                Sign Out
+                {strings.nav.signOut}
               </button>
             ) : (
               <button
                 onClick={() => signIn("azure-ad")}
                 className="text-sm text-primary"
               >
-                Admin Login
+                {strings.auth.adminLogin}
               </button>
             )}
           </div>

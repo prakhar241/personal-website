@@ -4,6 +4,7 @@ import { useState } from "react";
 import { formatDate } from "@/lib/utils";
 import { MessageCircle, Send } from "lucide-react";
 import { trackComment } from "@/lib/telemetry";
+import { strings } from "@/lib/strings";
 import toast from "react-hot-toast";
 
 interface Comment {
@@ -51,9 +52,9 @@ export function CommentSection({ slug, initialComments }: CommentSectionProps) {
       setComments([newComment, ...comments]);
       setBody("");
       trackComment(slug);
-      toast.success("Comment posted!");
+      toast.success(strings.comments.posted);
     } catch (err: any) {
-      toast.error(err.message || "Failed to post comment");
+      toast.error(err.message || strings.comments.failedToPost);
     } finally {
       setSubmitting(false);
     }
@@ -63,7 +64,7 @@ export function CommentSection({ slug, initialComments }: CommentSectionProps) {
     <section className="mt-10">
       <h2 className="flex items-center gap-2 text-xl font-bold text-foreground mb-6">
         <MessageCircle className="h-5 w-5" />
-        Comments ({comments.length})
+        {strings.comments.title} ({comments.length})
       </h2>
 
       {/* Comment Form */}
@@ -77,7 +78,7 @@ export function CommentSection({ slug, initialComments }: CommentSectionProps) {
               htmlFor="name"
               className="block text-sm font-medium text-foreground mb-1"
             >
-              Name <span className="text-red-500">*</span>
+              {strings.comments.nameLabel} <span className="text-red-500">{strings.comments.nameRequired}</span>
             </label>
             <input
               id="name"
@@ -87,7 +88,7 @@ export function CommentSection({ slug, initialComments }: CommentSectionProps) {
               required
               maxLength={100}
               className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-              placeholder="Your name"
+              placeholder={strings.comments.namePlaceholder}
             />
           </div>
           <div>
@@ -95,7 +96,7 @@ export function CommentSection({ slug, initialComments }: CommentSectionProps) {
               htmlFor="email"
               className="block text-sm font-medium text-foreground mb-1"
             >
-              Email <span className="text-muted-foreground">(optional)</span>
+              {strings.comments.emailLabel} <span className="text-muted-foreground">{strings.comments.emailOptional}</span>
             </label>
             <input
               id="email"
@@ -103,7 +104,7 @@ export function CommentSection({ slug, initialComments }: CommentSectionProps) {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-              placeholder="your@email.com"
+              placeholder={strings.comments.emailPlaceholder}
             />
           </div>
         </div>
@@ -112,7 +113,7 @@ export function CommentSection({ slug, initialComments }: CommentSectionProps) {
             htmlFor="comment"
             className="block text-sm font-medium text-foreground mb-1"
           >
-            Comment <span className="text-red-500">*</span>
+            {strings.comments.commentLabel} <span className="text-red-500">{strings.comments.nameRequired}</span>
           </label>
           <textarea
             id="comment"
@@ -122,7 +123,7 @@ export function CommentSection({ slug, initialComments }: CommentSectionProps) {
             maxLength={2000}
             rows={4}
             className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring resize-y"
-            placeholder="Write your comment..."
+            placeholder={strings.comments.commentPlaceholder}
           />
         </div>
         <div className="flex justify-end">
@@ -132,7 +133,7 @@ export function CommentSection({ slug, initialComments }: CommentSectionProps) {
             className="inline-flex items-center gap-2 rounded-lg bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
             <Send className="h-4 w-4" />
-            {submitting ? "Posting..." : "Post Comment"}
+            {submitting ? strings.comments.posting : strings.comments.postComment}
           </button>
         </div>
       </form>
@@ -159,7 +160,7 @@ export function CommentSection({ slug, initialComments }: CommentSectionProps) {
         ))}
         {comments.length === 0 && (
           <p className="text-center text-sm text-muted-foreground py-8">
-            No comments yet. Be the first to share your thoughts!
+            {strings.comments.noComments}
           </p>
         )}
       </div>

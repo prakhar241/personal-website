@@ -3,6 +3,7 @@
 import { signIn } from "next-auth/react";
 import { LogIn } from "lucide-react";
 import { useState } from "react";
+import { strings } from "@/lib/strings";
 
 export default function SignInPage() {
   const [email, setEmail] = useState("");
@@ -23,7 +24,7 @@ export default function SignInPage() {
     });
 
     if (result?.error) {
-      setError("Invalid email or password.");
+      setError(strings.auth.invalidCredentials);
       setLoading(false);
     } else if (result?.url) {
       window.location.href = result.url;
@@ -34,16 +35,16 @@ export default function SignInPage() {
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
       <div className="w-full max-w-sm space-y-6">
         <div className="text-center">
-          <h1 className="text-2xl font-bold text-foreground">Admin Login</h1>
+          <h1 className="text-2xl font-bold text-foreground">{strings.auth.adminLogin}</h1>
           <p className="mt-2 text-sm text-muted-foreground">
-            Sign in to access the admin panel.
+            {strings.auth.signInDescription}
           </p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label htmlFor="email" className="block text-sm font-medium text-foreground mb-1">
-              Email
+              {strings.auth.emailLabel}
             </label>
             <input
               id="email"
@@ -52,13 +53,13 @@ export default function SignInPage() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-brand-600"
-              placeholder="admin@example.com"
+              placeholder={strings.auth.emailPlaceholder}
             />
           </div>
 
           <div>
             <label htmlFor="password" className="block text-sm font-medium text-foreground mb-1">
-              Password
+              {strings.auth.passwordLabel}
             </label>
             <input
               id="password"
@@ -67,7 +68,7 @@ export default function SignInPage() {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-brand-600"
-              placeholder="Enter your password"
+              placeholder={strings.auth.passwordPlaceholder}
             />
           </div>
 
@@ -81,12 +82,12 @@ export default function SignInPage() {
             className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-brand-600 px-5 py-3 text-sm font-medium text-white hover:bg-brand-700 transition-colors disabled:opacity-50"
           >
             <LogIn className="h-4 w-4" />
-            {loading ? "Signing in..." : "Sign in"}
+            {loading ? strings.auth.signingIn : strings.auth.signIn}
           </button>
         </form>
 
         <p className="text-xs text-muted-foreground text-center">
-          Admin access only.
+          {strings.auth.adminAccessOnly}
         </p>
       </div>
     </div>
