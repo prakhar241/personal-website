@@ -3,4 +3,4 @@ Allow: /
 Disallow: /admin/
 Disallow: /api/
 
-Sitemap: PLACEHOLDER_SITE_URL/sitemap.xml
+Sitemap: https://prakharbansal.in/sitemap.xml
