@@ -14,6 +14,10 @@ RUN npm install --legacy-peer-deps
 FROM node:20-alpine AS builder
 WORKDIR /app
 
+# Build argument for commit SHA
+ARG COMMIT_SHA=unknown
+ENV NEXT_PUBLIC_COMMIT_SHA=$COMMIT_SHA
+
 COPY --from=deps /app/node_modules ./node_modules
 COPY apps/web/ ./
 
