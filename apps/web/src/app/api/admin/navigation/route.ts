@@ -3,7 +3,13 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import prisma from "@/lib/prisma";
 
-// GET - Fetch all navigation links (admin only)
+/* ---------- defaults auto-created when no nav links exist ---------- */
+const DEFAULT_NAV_LINKS = [
+  { label: "Blogs", href: "/blogs", sortOrder: 10, isVisible: true, isSystem: true, openInNewTab: false },
+  { label: "Contact", href: "/contact", sortOrder: 110, isVisible: true, isSystem: false, openInNewTab: false },
+];
+
+// GET - Fetch all navigation links (admin only, auto-creates defaults if empty)
 export async function GET() {
   const session = await getServerSession(authOptions);
   
@@ -12,6 +18,11 @@ export async function GET() {
   }
 
   try {
+    const count = await prisma.navLink.count();
+    if (count === 0) {
+      await prisma.navLink.createMany({ data: DEFAULT_NAV_LINKS });
+    }
+
     const links = await prisma.navLink.findMany({
       orderBy: { sortOrder: "asc" },
     });
