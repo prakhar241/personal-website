@@ -40,7 +40,7 @@ export async function GET(
   prisma.pageView
     .create({
       data: {
-        pagePath: `/blog/${params.slug}`,
+        pagePath: `/blogs/${params.slug}`,
         postId: post.id,
         visitorId,
         referrer: req.headers.get("referer") || null,

@@ -6,10 +6,17 @@ import { strings } from "@/lib/strings";
 import type { Metadata } from "next";
 
 export const dynamic = 'force-dynamic';
-export const metadata: Metadata = {
-  title: strings.nav.blog,
-  description: strings.blog.metaDescription,
-};
+
+export async function generateMetadata(): Promise<Metadata> {
+  const page = await prisma.staticPage.findUnique({
+    where: { slug: "blogs" },
+    select: { title: true, markdownContent: true },
+  });
+  return {
+    title: page?.title || "Blogs",
+    description: page?.markdownContent || strings.blog.metaDescription,
+  };
+}
 
 export default async function BlogPage({
   searchParams,
@@ -56,22 +63,30 @@ export default async function BlogPage({
   });
   const uniqueTags = [...new Set(allTags.flatMap((p) => p.tags))].sort();
 
+  // Get editable page header from StaticPage
+  const pageInfo = await prisma.staticPage.findUnique({
+    where: { slug: "blogs" },
+    select: { title: true, markdownContent: true },
+  });
+  const pageTitle = pageInfo?.title || "Blogs";
+  const pageDescription = pageInfo?.markdownContent || strings.blog.description;
+
   return (
     <div className="flex min-h-screen flex-col">
       <Navbar />
       <main className="flex-1 mx-auto max-w-5xl px-4 py-12">
         <h1 className="text-3xl font-bold tracking-tight text-foreground mb-2">
-          {strings.blog.title}
+          {pageTitle}
         </h1>
         <p className="text-muted-foreground mb-8">
-          {strings.blog.description}
+          {pageDescription}
         </p>
 
         {/* Tag Filter */}
         {uniqueTags.length > 0 && (
           <div className="flex flex-wrap gap-2 mb-8">
             <a
-              href="/blog"
+              href="/blogs"
               className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
                 !tag
                   ? "bg-brand-600 text-white"
@@ -83,7 +98,7 @@ export default async function BlogPage({
             {uniqueTags.map((t) => (
               <a
                 key={t}
-                href={`/blog?tag=${encodeURIComponent(t)}`}
+                href={`/blogs?tag=${encodeURIComponent(t)}`}
                 className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
                   tag === t
                     ? "bg-brand-600 text-white"
@@ -118,7 +133,7 @@ export default async function BlogPage({
           <div className="flex items-center justify-center gap-2 mt-12">
             {page > 1 && (
               <a
-                href={`/blog?page=${page - 1}${tag ? `&tag=${tag}` : ""}`}
+                href={`/blogs?page=${page - 1}${tag ? `&tag=${tag}` : ""}`}
                 className="rounded-lg border border-border px-4 py-2 text-sm hover:bg-accent transition-colors"
               >
                 {strings.blog.prevPage}
@@ -129,7 +144,7 @@ export default async function BlogPage({
             </span>
             {page < totalPages && (
               <a
-                href={`/blog?page=${page + 1}${tag ? `&tag=${tag}` : ""}`}
+                href={`/blogs?page=${page + 1}${tag ? `&tag=${tag}` : ""}`}
                 className="rounded-lg border border-border px-4 py-2 text-sm hover:bg-accent transition-colors"
               >
                 {strings.blog.nextPage}

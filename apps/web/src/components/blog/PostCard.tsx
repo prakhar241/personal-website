@@ -46,7 +46,7 @@ export function PostCard({ post }: PostCardProps) {
 
         {/* Title */}
         <h3 className="text-lg font-semibold text-card-foreground group-hover:text-brand-600 transition-colors">
-          <Link href={`/blog/${post.slug}`}>{post.title}</Link>
+          <Link href={`/blogs/${post.slug}`}>{post.title}</Link>
         </h3>
 
         {/* Excerpt */}

@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useSession, signIn, signOut } from "next-auth/react";
 import { useTheme } from "next-themes";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Sun,
   Moon,
@@ -13,22 +13,42 @@ import {
   LogOut,
   LayoutDashboard,
   PenSquare,
+  Settings,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { strings } from "@/lib/strings";
+
+interface NavLinkItem {
+  href: string;
+  label: string;
+  sortOrder: number;
+  openInNewTab: boolean;
+}
+
+const defaultNavLinks: NavLinkItem[] = [
+  { href: "/blogs", label: "Blogs", sortOrder: 10, openInNewTab: false },
+  { href: "/contact", label: "Contact", sortOrder: 110, openInNewTab: false },
+];
 
 export function Navbar() {
   const { data: session } = useSession();
   const { theme, setTheme } = useTheme();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [navLinks, setNavLinks] = useState<NavLinkItem[]>(defaultNavLinks);
   const isAdmin = session?.user?.role === "ADMIN";
 
-  const navLinks = [
-    { href: "/", label: strings.nav.home },
-    { href: "/blog", label: strings.nav.blog },
-    { href: "/about", label: strings.nav.about },
-    { href: "/contact", label: strings.nav.contact },
-  ];
+  useEffect(() => {
+    fetch("/api/nav")
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.links && data.links.length > 0) {
+          setNavLinks(data.links);
+        }
+      })
+      .catch(() => {
+        // Keep default links on error
+      });
+  }, []);
 
   return (
     <header className="sticky top-0 z-50 w-full border-b border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
@@ -48,6 +68,7 @@ export function Navbar() {
               key={link.href}
               href={link.href}
               className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+              {...(link.openInNewTab ? { target: "_blank", rel: "noopener noreferrer" } : {})}
             >
               {link.label}
             </Link>
@@ -68,6 +89,13 @@ export function Navbar() {
               >
                 <PenSquare className="h-4 w-4" />
                 {strings.nav.posts}
+              </Link>
+              <Link
+                href="/admin/settings"
+                className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1"
+              >
+                <Settings className="h-4 w-4" />
+                Settings
               </Link>
             </>
           )}
@@ -144,6 +172,13 @@ export function Navbar() {
                 onClick={() => setMobileMenuOpen(false)}
               >
                 {strings.nav.posts}
+              </Link>
+              <Link
+                href="/admin/settings"
+                className="block text-sm font-medium text-muted-foreground hover:text-foreground"
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                Settings
               </Link>
             </>
           )}

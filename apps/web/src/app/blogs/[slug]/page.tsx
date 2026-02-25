@@ -31,7 +31,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       description: post.excerpt || undefined,
       type: "article",
       images: post.coverImageUrl ? [post.coverImageUrl] : undefined,
-      url: absoluteUrl(`/blog/${params.slug}`),
+      url: absoluteUrl(`/blogs/${params.slug}`),
     },
     twitter: {
       card: "summary_large_image",
@@ -63,13 +63,13 @@ export default async function BlogPostPage({ params }: Props) {
   prisma.pageView
     .create({
       data: {
-        pagePath: `/blog/${params.slug}`,
+        pagePath: `/blogs/${params.slug}`,
         postId: post.id,
       },
     })
     .catch(() => {});
 
-  const shareUrl = absoluteUrl(`/blog/${params.slug}`);
+  const shareUrl = absoluteUrl(`/blogs/${params.slug}`);
 
   return (
     <div className="flex min-h-screen flex-col">
@@ -83,7 +83,7 @@ export default async function BlogPostPage({ params }: Props) {
                 {post.tags.map((tag) => (
                   <a
                     key={tag}
-                    href={`/blog?tag=${encodeURIComponent(tag)}`}
+                    href={`/blogs?tag=${encodeURIComponent(tag)}`}
                     className="rounded-full bg-brand-50 dark:bg-brand-950/30 px-3 py-1 text-xs font-medium text-brand-700 dark:text-brand-300 hover:bg-brand-100 dark:hover:bg-brand-950/50 transition-colors"
                   >
                     {tag}

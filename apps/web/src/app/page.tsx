@@ -2,30 +2,33 @@ import Link from "next/link";
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
 import prisma from "@/lib/prisma";
-import { strings } from "@/lib/strings";
+import { getSiteSettings } from "@/lib/settings";
 
 export const dynamic = 'force-dynamic';
 import { PostCard } from "@/components/blog/PostCard";
 import { ArrowRight } from "lucide-react";
 
 export default async function HomePage() {
-  const recentPosts = await prisma.post.findMany({
-    where: { status: "PUBLISHED" },
-    orderBy: { publishedAt: "desc" },
-    take: 5,
-    select: {
-      id: true,
-      title: true,
-      slug: true,
-      excerpt: true,
-      coverImageUrl: true,
-      tags: true,
-      publishedAt: true,
-      createdAt: true,
-      author: { select: { name: true, image: true } },
-      _count: { select: { likes: true, comments: true } },
-    },
-  });
+  const [recentPosts, settings] = await Promise.all([
+    prisma.post.findMany({
+      where: { status: "PUBLISHED" },
+      orderBy: { publishedAt: "desc" },
+      take: 5,
+      select: {
+        id: true,
+        title: true,
+        slug: true,
+        excerpt: true,
+        coverImageUrl: true,
+        tags: true,
+        publishedAt: true,
+        createdAt: true,
+        author: { select: { name: true, image: true } },
+        _count: { select: { likes: true, comments: true } },
+      },
+    }),
+    getSiteSettings(),
+  ]);
 
   return (
     <div className="flex min-h-screen flex-col">
@@ -34,27 +37,27 @@ export default async function HomePage() {
         {/* Hero Section */}
         <section className="mx-auto max-w-5xl px-4 py-16 md:py-24">
           <h1 className="text-4xl font-bold tracking-tight text-foreground sm:text-5xl md:text-6xl">
-            {strings.home.heroGreeting}{" "}
-            <span className="text-brand-500">{strings.home.heroHighlight}</span>
+            {settings.hero_greeting || "Hey, I'm"}{" "}
+            <span className="text-brand-500">{settings.hero_highlight || "a developer"}</span>
             <br />
-            {strings.home.heroSuffix}
+            {settings.hero_suffix || "with flavour."}
           </h1>
           <p className="mt-4 max-w-2xl text-lg text-muted-foreground">
-            {strings.home.heroDescription}
+            {settings.hero_description || "Welcome to my corner of the internet."}
           </p>
           <div className="mt-8 flex gap-4">
             <Link
-              href="/blog"
+              href="/blogs"
               className="inline-flex items-center gap-2 rounded-lg bg-brand-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-brand-700 transition-colors"
             >
-              {strings.home.readBlog}
+              {settings.hero_cta_primary || "Read the Blog"}
               <ArrowRight className="h-4 w-4" />
             </Link>
             <Link
-              href="/about"
+              href="/contact"
               className="inline-flex items-center gap-2 rounded-lg border border-border px-5 py-2.5 text-sm font-medium text-foreground hover:bg-accent transition-colors"
             >
-              {strings.home.aboutMe}
+              {settings.hero_cta_secondary || "Contact Me"}
             </Link>
           </div>
         </section>
@@ -63,13 +66,13 @@ export default async function HomePage() {
         <section className="mx-auto max-w-5xl px-4 pb-16">
           <div className="flex items-center justify-between mb-8">
             <h2 className="text-2xl font-bold tracking-tight text-foreground">
-              {strings.home.recentPosts}
+              Recent Posts
             </h2>
             <Link
-              href="/blog"
+              href="/blogs"
               className="text-sm font-medium text-brand-600 hover:text-brand-700 flex items-center gap-1"
             >
-              {strings.common.viewAll}
+              View all
               <ArrowRight className="h-3 w-3" />
             </Link>
           </div>
@@ -81,7 +84,7 @@ export default async function HomePage() {
             </div>
           ) : (
             <p className="text-muted-foreground">
-              {strings.home.noPostsYet}
+              No posts yet. Check back soon!
             </p>
           )}
         </section>
