@@ -120,7 +120,7 @@ export default async function AdminPostsPage() {
                     </Link>
                     {post.status === "PUBLISHED" && (
                       <Link
-                        href={`/blog/${post.slug}`}
+                        href={`/blogs/${post.slug}`}
                         target="_blank"
                         className="flex items-center gap-1 rounded px-2 py-1 text-xs text-muted-foreground hover:bg-accent transition-colors"
                       >

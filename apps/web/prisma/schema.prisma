@@ -107,7 +107,7 @@ model Post {
 }
 
 // ============================================
-// Static Pages (About, Contact, etc.)
+// Static Pages (Contact, etc.)
 // ============================================
 
 model StaticPage {
@@ -118,10 +118,49 @@ model StaticPage {
   htmlContent     String?  @db.Text
   sortOrder       Int      @default(0)
   isVisible       Boolean  @default(true)
+  showInNav       Boolean  @default(true)
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
   @@map("static_pages")
+}
+
+// ============================================
+// Site Settings
+// ============================================
+
+model SiteSetting {
+  id        String   @id @default(cuid())
+  key       String   @unique
+  value     String   @db.Text
+  type      String   @default("text") // text, richtext, json, image
+  label     String? // Human-readable label for admin UI
+  group     String   @default("general") // general, hero, pages, footer, social, seo
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([group])
+  @@map("site_settings")
+}
+
+// ============================================
+// Navigation Links
+// ============================================
+
+model NavLink {
+  id           String   @id @default(cuid())
+  label        String // Display text
+  href         String // URL path (e.g., /blogs, /contact)
+  sortOrder    Int      @default(50)
+  isVisible    Boolean  @default(true)
+  isSystem     Boolean  @default(false) // System links like Home, Blog can't be deleted
+  openInNewTab Boolean  @default(false)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([isVisible, sortOrder])
+  @@map("nav_links")
 }
 
 // ============================================

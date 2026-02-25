@@ -264,7 +264,7 @@ export default function AdminDashboardPage() {
                   {comment.body}
                 </p>
                 <Link
-                  href={`/blog/${comment.post.slug}`}
+                  href={`/blogs/${comment.post.slug}`}
                   className="text-xs text-brand-600 hover:underline mt-1 inline-block"
                 >
                   on &quot;{comment.post.title}&quot;

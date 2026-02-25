@@ -17,7 +17,7 @@ export const strings = {
   // Navigation
   nav: {
     home: "Home",
-    blog: "Blog",
+    blog: "Blogs",
     about: "About",
     contact: "Contact",
     dashboard: "Dashboard",

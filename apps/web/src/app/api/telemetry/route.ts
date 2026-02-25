@@ -10,8 +10,8 @@ export async function POST(req: NextRequest) {
     if (type === "pageview") {
       // Find associated post if applicable
       let postId: string | null = null;
-      if (pagePath.startsWith("/blog/")) {
-        const slug = pagePath.replace("/blog/", "");
+      if (pagePath.startsWith("/blogs/")) {
+        const slug = pagePath.replace("/blogs/", "");
         const post = await prisma.post.findUnique({
           where: { slug },
           select: { id: true },

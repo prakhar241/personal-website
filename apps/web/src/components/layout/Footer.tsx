@@ -16,9 +16,6 @@ export function Footer() {
             <Heart className="h-3 w-3 text-red-500 fill-red-500" />
           </div>
           <div className="flex items-center gap-4 text-sm text-muted-foreground">
-            <Link href="/about" className="hover:text-foreground transition-colors">
-              {strings.nav.about}
-            </Link>
             <Link href="/contact" className="hover:text-foreground transition-colors">
               {strings.nav.contact}
             </Link>

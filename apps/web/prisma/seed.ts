@@ -113,30 +113,10 @@ The blog follows a monorepo structure using Turborepo...
   // Create static pages
   const pages = [
     {
-      slug: "about",
-      title: "About Me",
+      slug: "blogs",
+      title: "Blogs",
       sortOrder: 1,
-      markdownContent: `# About Me
-
-Hi! I'm a software developer with a flavour for building elegant solutions.
-
-## What I Do
-
-I specialize in full-stack development, cloud architecture, and DevOps.
-
-## Skills
-
-- TypeScript / JavaScript
-- React / Next.js
-- Node.js
-- Azure Cloud Services
-- Kubernetes & Docker
-- CI/CD & Infrastructure as Code
-
-## Get in Touch
-
-Feel free to reach out via the contact page or connect on social media.
-`,
+      markdownContent: "Thoughts, tutorials, and insights on software development.",
     },
     {
       slug: "contact",
@@ -165,6 +145,54 @@ Drop me a line at **your-email@example.com**
       update: {},
       create: page,
     });
+  }
+
+  // Seed site settings
+  const siteSettings = [
+    // General
+    { key: "site_name", value: "My Blog", type: "text", label: "Site Name", group: "general", sortOrder: 1 },
+    { key: "site_tagline", value: "Developer & Builder", type: "text", label: "Tagline", group: "general", sortOrder: 2 },
+    { key: "site_description", value: "Personal blog about software development", type: "text", label: "Description", group: "general", sortOrder: 3 },
+    // Hero
+    { key: "hero_greeting", value: "Hey, I'm", type: "text", label: "Hero Greeting", group: "hero", sortOrder: 1 },
+    { key: "hero_highlight", value: "a software developer", type: "text", label: "Hero Highlight (colored text)", group: "hero", sortOrder: 2 },
+    { key: "hero_suffix", value: "with flavour.", type: "text", label: "Hero Suffix", group: "hero", sortOrder: 3 },
+    { key: "hero_description", value: "Welcome to my corner of the internet. I write about software development, technology, and the things I'm building. Grab a coffee and stay a while.", type: "richtext", label: "Hero Description", group: "hero", sortOrder: 4 },
+    { key: "hero_cta_primary", value: "Read the Blog", type: "text", label: "Primary Button Text", group: "hero", sortOrder: 5 },
+    { key: "hero_cta_secondary", value: "Contact Me", type: "text", label: "Secondary Button Text", group: "hero", sortOrder: 6 },
+    // Footer
+    { key: "footer_text", value: "Built with", type: "text", label: "Footer Text", group: "footer", sortOrder: 1 },
+    { key: "footer_copyright", value: "All rights reserved.", type: "text", label: "Copyright Text", group: "footer", sortOrder: 2 },
+    // Social
+    { key: "social_github", value: "", type: "text", label: "GitHub URL", group: "social", sortOrder: 1 },
+    { key: "social_linkedin", value: "", type: "text", label: "LinkedIn URL", group: "social", sortOrder: 2 },
+    { key: "social_twitter", value: "", type: "text", label: "Twitter URL", group: "social", sortOrder: 3 },
+    { key: "social_email", value: "", type: "text", label: "Email Address", group: "social", sortOrder: 4 },
+    // SEO
+    { key: "seo_title", value: "Personal Blog", type: "text", label: "SEO Title", group: "seo", sortOrder: 1 },
+    { key: "seo_description", value: "A personal blog about technology", type: "text", label: "SEO Description", group: "seo", sortOrder: 2 },
+    { key: "seo_keywords", value: "blog, developer, technology", type: "text", label: "SEO Keywords", group: "seo", sortOrder: 3 },
+  ];
+
+  for (const setting of siteSettings) {
+    await prisma.siteSetting.upsert({
+      where: { key: setting.key },
+      update: {},
+      create: setting,
+    });
+  }
+
+  // Seed navigation links
+  const navLinks = [
+    { label: "Blogs", href: "/blogs", sortOrder: 10, isVisible: true, isSystem: true, openInNewTab: false },
+    { label: "Contact", href: "/contact", sortOrder: 110, isVisible: true, isSystem: false, openInNewTab: false },
+  ];
+
+  for (const link of navLinks) {
+    const existing = await prisma.navLink.findFirst({ where: { href: link.href } });
+    if (!existing) {
+      await prisma.navLink.create({ data: link });
+    }
   }
 
   console.log("✅ Seeding complete!");
