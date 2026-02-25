@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
 import { ArrowLeft, Save, Loader2, Eye, ExternalLink } from "lucide-react";
@@ -39,13 +39,7 @@ export default function PageEditorPage({ params }: PageEditorProps) {
     showInNav: true,
   });
 
-  useEffect(() => {
-    if (!isNew) {
-      fetchPage();
-    }
-  }, [params.slug]);
-
-  async function fetchPage() {
+  const fetchPage = useCallback(async () => {
     setLoading(true);
     try {
       const res = await fetch(`/api/pages/${params.slug}`);
@@ -58,9 +52,16 @@ export default function PageEditorPage({ params }: PageEditorProps) {
       }
     } catch (error) {
       toast.error("Failed to load page");
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
-  }
+  }, [params.slug, router]);
+
+  useEffect(() => {
+    if (!isNew) {
+      fetchPage();
+    }
+  }, [isNew, fetchPage]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();

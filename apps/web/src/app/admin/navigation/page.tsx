@@ -306,7 +306,7 @@ export default function AdminNavigationPage() {
 
         {links.length === 0 && (
           <div className="text-center py-12 text-muted-foreground">
-            No navigation links yet. Click "Add Link" to create one.
+            No navigation links yet. Click &ldquo;Add Link&rdquo; to create one.
           </div>
         )}
       </div>
@@ -318,7 +318,7 @@ export default function AdminNavigationPage() {
           <li><strong>Sort #</strong>: Lower numbers appear first in the navigation</li>
           <li><strong>System links</strong> (marked with 🔒) cannot be deleted but can be renamed or hidden</li>
           <li><strong>New Tab</strong>: Enable for external links to open in a new browser tab</li>
-          <li>Changes are saved only when you click "Save Changes"</li>
+          <li>Changes are saved only when you click &ldquo;Save Changes&rdquo;</li>
         </ul>
       </div>
     </div>
