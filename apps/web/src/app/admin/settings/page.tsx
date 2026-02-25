@@ -490,8 +490,7 @@ export default function AdminSettingsPage() {
                 (grp) => !grouped[grp] || grouped[grp].length === 0
               ) && (
                 <p className="text-muted-foreground text-sm">
-                  No settings found for this section. Run the database seed to
-                  populate defaults.
+                  No settings found for this section.
                 </p>
               )}
             </div>
