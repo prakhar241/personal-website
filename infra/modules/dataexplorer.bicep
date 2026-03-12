@@ -42,6 +42,9 @@ param eventHubResourceId string = ''
 @description('Event Hub consumer group for ADX')
 param eventHubConsumerGroup string = 'adx-consumer'
 
+@description('Event Hub namespace resource ID (for role assignment)')
+param eventHubNamespaceId string = ''
+
 // ---- ADX Cluster ----
 
 resource adxCluster 'Microsoft.Kusto/clusters@2023-08-15' = {
@@ -106,27 +109,7 @@ resource tableScript 'Microsoft.Kusto/clusters/databases/scripts@2023-08-15' = {
       )
 
       // JSON ingestion mapping for Event Hub data
-      .create-or-alter table TelemetryEvents ingestion json mapping 'TelemetryEventsMapping'
-      ```
-      [
-        {"column": "EventType",    "path": "$.eventType",    "datatype": "string"},
-        {"column": "Timestamp",    "path": "$.timestamp",    "datatype": "datetime"},
-        {"column": "SessionId",    "path": "$.sessionId",    "datatype": "string"},
-        {"column": "VisitorId",    "path": "$.visitorId",    "datatype": "string"},
-        {"column": "Url",          "path": "$.url",          "datatype": "string"},
-        {"column": "Path",         "path": "$.path",         "datatype": "string"},
-        {"column": "Referrer",     "path": "$.referrer",     "datatype": "string"},
-        {"column": "UserAgent",    "path": "$.userAgent",    "datatype": "string"},
-        {"column": "ScreenWidth",  "path": "$.screenWidth",  "datatype": "int"},
-        {"column": "ScreenHeight", "path": "$.screenHeight", "datatype": "int"},
-        {"column": "Language",     "path": "$.language",     "datatype": "string"},
-        {"column": "Timezone",     "path": "$.timezone",     "datatype": "string"},
-        {"column": "Country",      "path": "$.country",      "datatype": "string"},
-        {"column": "City",         "path": "$.city",         "datatype": "string"},
-        {"column": "Region",       "path": "$.region",       "datatype": "string"},
-        {"column": "Properties",   "path": "$.properties",   "datatype": "dynamic"}
-      ]
-      ```
+      .create-or-alter table TelemetryEvents ingestion json mapping 'TelemetryEventsMapping' '[{"column":"EventType","path":"$.eventType","datatype":"string"},{"column":"Timestamp","path":"$.timestamp","datatype":"datetime"},{"column":"SessionId","path":"$.sessionId","datatype":"string"},{"column":"VisitorId","path":"$.visitorId","datatype":"string"},{"column":"Url","path":"$.url","datatype":"string"},{"column":"Path","path":"$.path","datatype":"string"},{"column":"Referrer","path":"$.referrer","datatype":"string"},{"column":"UserAgent","path":"$.userAgent","datatype":"string"},{"column":"ScreenWidth","path":"$.screenWidth","datatype":"int"},{"column":"ScreenHeight","path":"$.screenHeight","datatype":"int"},{"column":"Language","path":"$.language","datatype":"string"},{"column":"Timezone","path":"$.timezone","datatype":"string"},{"column":"Country","path":"$.country","datatype":"string"},{"column":"City","path":"$.city","datatype":"string"},{"column":"Region","path":"$.region","datatype":"string"},{"column":"Properties","path":"$.properties","datatype":"dynamic"}]'
 
       // Materialized view for page views per day per country
       .create-or-alter materialized-view PageViewsByCountry on table TelemetryEvents
@@ -157,6 +140,23 @@ resource tableScript 'Microsoft.Kusto/clusters/databases/scripts@2023-08-15' = {
   }
 }
 
+// ---- Role Assignment: ADX → Event Hub Data Receiver ----
+// ADX managed identity needs read access to Event Hub for data ingestion
+
+resource eventHubRoleAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = if (eventHubNamespaceId != '') {
+  name: guid(adxCluster.id, eventHubNamespaceId, 'a638d3c7-ab3a-488d-b6eb-53e5f7cc5e4f') // Azure Event Hubs Data Receiver
+  scope: eventHubNamespaceRef
+  properties: {
+    principalId: adxCluster.identity.principalId
+    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', 'a638d3c7-ab3a-488d-b6eb-53e5f7cc5e4f')
+    principalType: 'ServicePrincipal'
+  }
+}
+
+resource eventHubNamespaceRef 'Microsoft.EventHub/namespaces@2024-01-01' existing = if (eventHubNamespaceId != '') {
+  name: last(split(eventHubNamespaceId, '/'))
+}
+
 // ---- Event Hub Data Connection ----
 // Auto-ingests from Event Hubs into ADX
 
@@ -176,6 +176,7 @@ resource dataConnection 'Microsoft.Kusto/clusters/databases/dataConnections@2023
   }
   dependsOn: [
     tableScript
+    eventHubRoleAssignment
   ]
 }
 

@@ -39,8 +39,10 @@ param partitionCount int = 4
 
 // ---- Event Hubs Namespace ----
 
+var namespaceName = '${namePrefix}-ehns'
+
 resource eventHubNamespace 'Microsoft.EventHub/namespaces@2024-01-01' = {
-  name: '${namePrefix}-ehns'
+  name: length(namespaceName) >= 6 ? namespaceName : '${namespaceName}-ns'
   location: location
   tags: tags
   sku: {
