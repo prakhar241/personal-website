@@ -137,6 +137,41 @@ module aks 'modules/aks.bicep' = {
 }
 
 // ============================================
+// Azure Event Hubs (Kafka-compatible telemetry streaming)
+// ============================================
+module eventHubs 'modules/eventhubs.bicep' = {
+  name: 'eventhubs-deployment'
+  params: {
+    namePrefix: namePrefix
+    location: location
+    tags: tags
+    skuTier: environment == 'prod' ? 'Standard' : 'Standard'
+    capacity: environment == 'prod' ? 2 : 1
+    kafkaEnabled: true
+    messageRetentionDays: environment == 'prod' ? 7 : 3
+    partitionCount: environment == 'prod' ? 8 : 4
+  }
+}
+
+// ============================================
+// Azure Data Explorer (KQL analytics + Power BI)
+// ============================================
+module dataExplorer 'modules/dataexplorer.bicep' = {
+  name: 'dataexplorer-deployment'
+  params: {
+    namePrefix: namePrefix
+    location: location
+    tags: tags
+    skuName: environment == 'prod' ? 'Standard_E2a_v4' : 'Dev(No SLA)_Standard_E2a_v4'
+    capacity: environment == 'prod' ? 2 : 1
+    retentionDays: environment == 'prod' ? 365 : 90
+    cacheDays: environment == 'prod' ? 31 : 7
+    eventHubResourceId: eventHubs.outputs.namespaceName != '' ? '${resourceGroup().id}/providers/Microsoft.EventHub/namespaces/${eventHubs.outputs.namespaceName}/eventhubs/telemetry-events' : ''
+    eventHubConsumerGroup: 'adx-consumer'
+  }
+}
+
+// ============================================
 // Store secrets in Key Vault
 // ============================================
 module secrets 'modules/keyvault-secrets.bicep' = {
@@ -168,6 +203,26 @@ module secrets 'modules/keyvault-secrets.bicep' = {
         name: 'acr-login-server'
         value: acr.outputs.loginServer
       }
+      {
+        name: 'eventhub-connection-string'
+        value: eventHubs.outputs.sendConnectionString
+      }
+      {
+        name: 'eventhub-namespace'
+        value: eventHubs.outputs.namespaceFqdn
+      }
+      {
+        name: 'eventhub-name'
+        value: eventHubs.outputs.telemetryEventHubName
+      }
+      {
+        name: 'eventhub-otel-connection-string'
+        value: eventHubs.outputs.otelConnectionString
+      }
+      {
+        name: 'adx-cluster-uri'
+        value: dataExplorer.outputs.clusterUri
+      }
     ]
   }
 }
@@ -182,3 +237,7 @@ output keyVaultUri string = keyVault.outputs.uri
 output postgresqlFqdn string = postgresql.outputs.fqdn
 output appInsightsConnectionString string = monitoring.outputs.appInsightsConnectionString
 output storageAccountName string = storage.outputs.name
+output eventHubNamespace string = eventHubs.outputs.namespaceFqdn
+output eventHubName string = eventHubs.outputs.telemetryEventHubName
+output adxClusterUri string = dataExplorer.outputs.clusterUri
+output adxDatabaseName string = dataExplorer.outputs.databaseName

@@ -5,6 +5,7 @@ resources:
   - namespace.yaml
   - web-deployment.yaml
   - web-service.yaml
+  - otel-collector.yaml
 
 # Note: Removed commonLabels as it modifies service selectors
 # but not deployment pod template labels, causing endpoint mismatch

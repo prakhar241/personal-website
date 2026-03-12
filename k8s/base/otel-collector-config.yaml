@@ -1,0 +1,107 @@
+# ============================================
+# OpenTelemetry Collector Configuration
+#
+# Deployed as a sidecar alongside the Next.js app.
+# Receives traces/metrics from the app via OTLP,
+# then exports to multiple Azure backends:
+#
+#   1. Azure Monitor (Application Insights)
+#   2. Azure Event Hubs (for ADX + Databricks)
+#   3. Logging (debug/development)
+# ============================================
+
+receivers:
+  otlp:
+    protocols:
+      http:
+        endpoint: "0.0.0.0:4318"
+      grpc:
+        endpoint: "0.0.0.0:4317"
+
+processors:
+  batch:
+    timeout: 5s
+    send_batch_size: 256
+    send_batch_max_size: 512
+
+  memory_limiter:
+    check_interval: 5s
+    limit_mib: 256
+    spike_limit_mib: 64
+
+  resource:
+    attributes:
+      - key: service.name
+        value: "personal-website"
+        action: upsert
+      - key: deployment.environment
+        value: "${DEPLOYMENT_ENV}"
+        action: upsert
+
+  # Add useful attributes for querying
+  attributes:
+    actions:
+      - key: telemetry.source
+        value: "otel-collector"
+        action: upsert
+
+exporters:
+  # Azure Monitor / Application Insights
+  azuremonitor:
+    connection_string: "${APPLICATIONINSIGHTS_CONNECTION_STRING}"
+    maxbatchsize: 100
+    maxbatchinterval: 10s
+
+  # OTLP exporter to Azure Data Explorer (via ADX OTLP endpoint)
+  otlphttp/adx:
+    endpoint: "${ADX_OTLP_ENDPOINT}"
+    headers:
+      Authorization: "Bearer ${ADX_ACCESS_TOKEN}"
+
+  # Kafka/Event Hubs exporter for streaming pipeline
+  kafka:
+    protocol_version: "2.0.0"
+    brokers:
+      - "${EVENTHUB_NAMESPACE}.servicebus.windows.net:9093"
+    topic: "otel-traces"
+    auth:
+      sasl:
+        mechanism: "PLAIN"
+        username: "$ConnectionString"
+        password: "${EVENTHUB_CONNECTION_STRING}"
+      tls:
+        insecure: false
+
+  # Debug/development logging
+  debug:
+    verbosity: basic
+    sampling_initial: 5
+    sampling_thereafter: 200
+
+extensions:
+  health_check:
+    endpoint: "0.0.0.0:13133"
+  zpages:
+    endpoint: "0.0.0.0:55679"
+
+service:
+  extensions: [health_check, zpages]
+  pipelines:
+    traces:
+      receivers: [otlp]
+      processors: [memory_limiter, batch, resource, attributes]
+      exporters: [azuremonitor, kafka, debug]
+    metrics:
+      receivers: [otlp]
+      processors: [memory_limiter, batch, resource]
+      exporters: [azuremonitor, debug]
+    logs:
+      receivers: [otlp]
+      processors: [memory_limiter, batch]
+      exporters: [azuremonitor, debug]
+
+  telemetry:
+    logs:
+      level: "info"
+    metrics:
+      address: "0.0.0.0:8888"
