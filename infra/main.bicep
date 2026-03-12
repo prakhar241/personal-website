@@ -168,6 +168,7 @@ module dataExplorer 'modules/dataexplorer.bicep' = {
     cacheDays: environment == 'prod' ? 31 : 7
     eventHubResourceId: eventHubs.outputs.namespaceName != '' ? '${resourceGroup().id}/providers/Microsoft.EventHub/namespaces/${eventHubs.outputs.namespaceName}/eventhubs/telemetry-events' : ''
     eventHubConsumerGroup: 'adx-consumer'
+    eventHubNamespaceId: eventHubs.outputs.namespaceId
   }
 }
 
