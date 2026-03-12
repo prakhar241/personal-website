@@ -24,6 +24,16 @@ spec:
               value: "production"
             - name: PORT
               value: "3000"
+            # OpenTelemetry Configuration
+            - name: OTEL_SERVICE_NAME
+              value: "personal-website"
+            - name: OTEL_EXPORTER_OTLP_ENDPOINT
+              value: "http://otel-collector:4318"
+            - name: OTEL_EXPORTER_OTLP_PROTOCOL
+              value: "http/protobuf"
+            # Event Hubs (set via blog-secrets)
+            # EVENTHUB_CONNECTION_STRING
+            # EVENTHUB_NAME
           envFrom:
             - secretRef:
                 name: blog-secrets
