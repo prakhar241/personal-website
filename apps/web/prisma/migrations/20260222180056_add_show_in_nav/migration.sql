@@ -1,2 +1,2 @@
--- Migration already applied to database
--- SQL file was lost; this is a placeholder to keep Prisma migration chain intact
+-- AlterTable
+ALTER TABLE "static_pages" ADD COLUMN     "showInNav" BOOLEAN NOT NULL DEFAULT true;
