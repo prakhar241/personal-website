@@ -60,7 +60,10 @@ Write-Host "`nAKS Cluster: $($outputs.aksClusterName.value)" -ForegroundColor Wh
 Write-Host "ACR Login Server: $($outputs.acrLoginServer.value)" -ForegroundColor White
 Write-Host "Key Vault: $($outputs.keyVaultName.value)" -ForegroundColor White
 Write-Host "PostgreSQL FQDN: $($outputs.postgresqlFqdn.value)" -ForegroundColor White
-
+Write-Host "Event Hub Namespace: $($outputs.eventHubNamespace.value)" -ForegroundColor White
+Write-Host "Event Hub Name: $($outputs.eventHubName.value)" -ForegroundColor White
+Write-Host "ADX Cluster URI: $($outputs.adxClusterUri.value)" -ForegroundColor White
+Write-Host "ADX Database: $($outputs.adxDatabaseName.value)" -ForegroundColor White
 # Get AKS credentials
 Write-Host "`nGetting AKS credentials..." -ForegroundColor Yellow
 az aks get-credentials `

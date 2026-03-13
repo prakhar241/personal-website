@@ -7,6 +7,7 @@
 // ============================================
 
 @description('Resource name prefix')
+@minLength(1)
 param namePrefix string
 
 @description('Azure region')
@@ -39,10 +40,11 @@ param partitionCount int = 4
 
 // ---- Event Hubs Namespace ----
 
+// namePrefix min 1 char + '-ehns' = min 6 chars, satisfying EH namespace requirement
 var namespaceName = '${namePrefix}-ehns'
 
 resource eventHubNamespace 'Microsoft.EventHub/namespaces@2024-01-01' = {
-  name: length(namespaceName) >= 6 ? namespaceName : '${namespaceName}-ns'
+  name: namespaceName
   location: location
   tags: tags
   sku: {
@@ -153,8 +155,15 @@ resource otelPolicy 'Microsoft.EventHub/namespaces/authorizationRules@2024-01-01
 output namespaceName string = eventHubNamespace.name
 output namespaceId string = eventHubNamespace.id
 output namespaceFqdn string = '${eventHubNamespace.name}.servicebus.windows.net'
+
+#disable-next-line outputs-should-not-contain-secrets // Stored in Key Vault by parent template
 output sendConnectionString string = sendPolicy.listKeys().primaryConnectionString
+
+#disable-next-line outputs-should-not-contain-secrets // Stored in Key Vault by parent template
 output listenConnectionString string = listenPolicy.listKeys().primaryConnectionString
+
+#disable-next-line outputs-should-not-contain-secrets // Stored in Key Vault by parent template
 output otelConnectionString string = otelPolicy.listKeys().primaryConnectionString
+
 output telemetryEventHubName string = telemetryEventsHub.name
 output otelTracesHubName string = otelTracesHub.name

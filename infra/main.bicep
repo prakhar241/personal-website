@@ -173,6 +173,21 @@ module dataExplorer 'modules/dataexplorer.bicep' = {
 }
 
 // ============================================
+// Telemetry Pipeline Monitoring & Alerts
+// ============================================
+module alerts 'modules/alerts.bicep' = {
+  name: 'alerts-deployment'
+  params: {
+    namePrefix: namePrefix
+    tags: tags
+    eventHubNamespaceId: eventHubs.outputs.namespaceId
+    adxClusterId: dataExplorer.outputs.clusterId
+    appInsightsId: monitoring.outputs.appInsightsId
+    alertEmail: adminEmail
+  }
+}
+
+// ============================================
 // Store secrets in Key Vault
 // ============================================
 module secrets 'modules/keyvault-secrets.bicep' = {

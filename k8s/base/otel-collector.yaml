@@ -9,7 +9,6 @@ apiVersion: v1
 kind: ConfigMap
 metadata:
   name: otel-collector-config
-  namespace: blog
 data:
   otel-collector-config.yaml: |
     receivers:
@@ -38,12 +37,12 @@ data:
       kafka:
         protocol_version: "2.0.0"
         brokers:
-          - "${EVENTHUB_NAMESPACE}.servicebus.windows.net:9093"
+          - "${EVENTHUB_NAMESPACE}:9093"
         topic: "otel-traces"
         auth:
           sasl:
             mechanism: "PLAIN"
-            username: "$ConnectionString"
+            username: "$$ConnectionString"
             password: "${EVENTHUB_CONNECTION_STRING}"
           tls:
             insecure: false
@@ -68,7 +67,6 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: otel-collector
-  namespace: blog
   labels:
     app: otel-collector
 spec:
@@ -98,17 +96,17 @@ spec:
               valueFrom:
                 secretKeyRef:
                   name: blog-secrets
-                  key: appinsights-connection-string
+                  key: APPLICATIONINSIGHTS_CONNECTION_STRING
             - name: EVENTHUB_CONNECTION_STRING
               valueFrom:
                 secretKeyRef:
                   name: blog-secrets
-                  key: eventhub-connection-string
+                  key: EVENTHUB_OTEL_CONNECTION_STRING
             - name: EVENTHUB_NAMESPACE
               valueFrom:
                 secretKeyRef:
                   name: blog-secrets
-                  key: eventhub-namespace
+                  key: EVENTHUB_NAMESPACE
           volumeMounts:
             - name: config
               mountPath: /conf
@@ -138,7 +136,6 @@ apiVersion: v1
 kind: Service
 metadata:
   name: otel-collector
-  namespace: blog
   labels:
     app: otel-collector
 spec:

@@ -87,6 +87,7 @@ resource tableScript 'Microsoft.Kusto/clusters/databases/scripts@2023-08-15' = {
   parent: telemetryDb
   name: 'create-tables'
   properties: {
+    #disable-next-line use-secure-value-for-secure-inputs // Script content is DDL commands, not a secret
     scriptContent: '''
       // Page view and interaction events from Event Hubs
       .create-merge table TelemetryEvents (
@@ -129,32 +130,35 @@ resource tableScript 'Microsoft.Kusto/clusters/databases/scripts@2023-08-15' = {
           by bin(Timestamp, 1d)
       }
 
-      // Retention policy: keep raw data for 365 days
+      // Retention policy: keep raw data for configured period
       .alter-merge table TelemetryEvents policy retention softdelete = 365d
 
-      // Caching policy: hot cache for 31 days
-      .alter-merge table TelemetryEvents policy caching hot = 31d
+      // Caching policy: hot cache for configured period
+      .alter table TelemetryEvents policy caching hot = 31d
     '''
     continueOnErrors: true
-    forceUpdateTag: 'v1'
+    forceUpdateTag: 'v3'
   }
 }
 
 // ---- Role Assignment: ADX → Event Hub Data Receiver ----
 // ADX managed identity needs read access to Event Hub for data ingestion
 
+resource eventHubNamespaceRef 'Microsoft.EventHub/namespaces@2024-01-01' existing = if (eventHubNamespaceId != '') {
+  name: last(split(eventHubNamespaceId, '/'))
+}
+
+// Azure Event Hubs Data Receiver built-in role
+var eventHubsDataReceiverRoleId = 'a638d3c7-ab3a-418d-83e6-5f17a39d4fde'
+
 resource eventHubRoleAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = if (eventHubNamespaceId != '') {
-  name: guid(adxCluster.id, eventHubNamespaceId, 'a638d3c7-ab3a-488d-b6eb-53e5f7cc5e4f') // Azure Event Hubs Data Receiver
+  name: guid(adxCluster.id, eventHubNamespaceId, eventHubsDataReceiverRoleId)
   scope: eventHubNamespaceRef
   properties: {
     principalId: adxCluster.identity.principalId
-    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', 'a638d3c7-ab3a-488d-b6eb-53e5f7cc5e4f')
+    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', eventHubsDataReceiverRoleId)
     principalType: 'ServicePrincipal'
   }
-}
-
-resource eventHubNamespaceRef 'Microsoft.EventHub/namespaces@2024-01-01' existing = if (eventHubNamespaceId != '') {
-  name: last(split(eventHubNamespaceId, '/'))
 }
 
 // ---- Event Hub Data Connection ----
