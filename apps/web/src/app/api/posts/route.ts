@@ -5,6 +5,7 @@ import prisma from "@/lib/prisma";
 import { createPostSchema } from "@/lib/validations";
 import { slugify } from "@/lib/utils";
 import { markdownToHtml } from "@/lib/markdown";
+import { sendBulkPostNotifications } from "@/lib/email";
 
 // GET /api/posts - list posts (public: published only, admin: all)
 export async function GET(req: NextRequest) {
@@ -97,6 +98,13 @@ export async function POST(req: NextRequest) {
         authorId: session.user.id,
       },
     });
+
+    // Notify subscribers when publishing directly
+    if (post.status === "PUBLISHED") {
+      sendBulkPostNotifications(post).catch((err) =>
+        console.error("Failed to send post notifications:", err)
+      );
+    }
 
     return NextResponse.json(post, { status: 201 });
   } catch (error: any) {

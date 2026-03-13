@@ -24,6 +24,8 @@ export async function GET(req: NextRequest) {
     totalLikes,
     totalViews,
     recentViews,
+    totalSubscribers,
+    recentSubscribers,
     postStats,
     topPages,
     recentComments,
@@ -36,6 +38,8 @@ export async function GET(req: NextRequest) {
     prisma.like.count(),
     prisma.pageView.count(),
     prisma.pageView.count({ where: { createdAt: { gte: since } } }),
+    prisma.subscriber.count({ where: { verified: true } }),
+    prisma.subscriber.count({ where: { verified: true, subscribedAt: { gte: since } } }),
     // Per-post stats
     prisma.post.findMany({
       select: {
@@ -77,6 +81,8 @@ export async function GET(req: NextRequest) {
       totalLikes,
       totalViews,
       recentViews,
+      totalSubscribers,
+      recentSubscribers,
     },
     postStats,
     topPages: topPages.map((p) => ({

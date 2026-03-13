@@ -228,3 +228,43 @@ model LinkClick {
   @@index([pagePath, createdAt(sort: Desc)])
   @@map("link_clicks")
 }
+
+// ============================================
+// Email Subscriptions
+// ============================================
+
+enum NotifyMode {
+  INSTANT
+  DIGEST
+  BOTH
+}
+
+model Subscriber {
+  id               String     @id @default(cuid())
+  email            String     @unique
+  verifyToken      String     @unique @default(uuid())
+  unsubscribeToken String?    @unique
+  verified         Boolean    @default(false)
+  notifyMode       NotifyMode @default(INSTANT)
+  subscribedAt     DateTime?
+  createdAt        DateTime   @default(now())
+
+  @@index([verified])
+  @@map("subscribers")
+}
+
+// ============================================
+// Email Templates
+// ============================================
+
+model EmailTemplate {
+  id          String   @id @default(cuid())
+  templateKey String   @unique
+  subject     String
+  htmlBody    String   @db.Text
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("email_templates")
+}
