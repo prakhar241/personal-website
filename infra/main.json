@@ -1,0 +1,1986 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "metadata": {
+    "_generator": {
+      "name": "bicep",
+      "version": "0.40.2.10011",
+      "templateHash": "3538524242282721629"
+    }
+  },
+  "parameters": {
+    "environment": {
+      "type": "string",
+      "allowedValues": [
+        "preprod",
+        "prod"
+      ],
+      "metadata": {
+        "description": "Environment name (preprod or prod)"
+      }
+    },
+    "location": {
+      "type": "string",
+      "defaultValue": "[resourceGroup().location]",
+      "metadata": {
+        "description": "Azure region for resources"
+      }
+    },
+    "baseName": {
+      "type": "string",
+      "defaultValue": "blog",
+      "metadata": {
+        "description": "Base name for all resources"
+      }
+    },
+    "adminEmail": {
+      "type": "securestring",
+      "metadata": {
+        "description": "Admin email for the blog"
+      }
+    },
+    "dbAdminUsername": {
+      "type": "string",
+      "defaultValue": "blogadmin",
+      "metadata": {
+        "description": "PostgreSQL admin username"
+      }
+    },
+    "dbAdminPassword": {
+      "type": "securestring",
+      "metadata": {
+        "description": "PostgreSQL admin password"
+      }
+    },
+    "aksNodeVmSize": {
+      "type": "string",
+      "defaultValue": "[if(equals(parameters('environment'), 'prod'), 'Standard_B4ms', 'Standard_B2s')]",
+      "metadata": {
+        "description": "AKS node VM size"
+      }
+    },
+    "aksNodeCount": {
+      "type": "int",
+      "defaultValue": "[if(equals(parameters('environment'), 'prod'), 2, 1)]",
+      "metadata": {
+        "description": "AKS node count"
+      }
+    }
+  },
+  "variables": {
+    "namePrefix": "[format('{0}-{1}', parameters('baseName'), parameters('environment'))]",
+    "tags": {
+      "project": "personal-blog",
+      "environment": "[parameters('environment')]",
+      "managedBy": "bicep"
+    }
+  },
+  "resources": [
+    {
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2025-04-01",
+      "name": "acr-deployment",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "name": {
+            "value": "[replace(format('{0}acr{1}', parameters('baseName'), uniqueString(resourceGroup().id)), '-', '')]"
+          },
+          "location": {
+            "value": "[parameters('location')]"
+          },
+          "tags": {
+            "value": "[variables('tags')]"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.40.2.10011",
+              "templateHash": "7716272546915260808"
+            }
+          },
+          "parameters": {
+            "name": {
+              "type": "string",
+              "metadata": {
+                "description": "ACR name (must be globally unique, alphanumeric)"
+              }
+            },
+            "location": {
+              "type": "string",
+              "metadata": {
+                "description": "Azure region"
+              }
+            },
+            "tags": {
+              "type": "object",
+              "metadata": {
+                "description": "Resource tags"
+              }
+            }
+          },
+          "resources": [
+            {
+              "type": "Microsoft.ContainerRegistry/registries",
+              "apiVersion": "2023-07-01",
+              "name": "[parameters('name')]",
+              "location": "[parameters('location')]",
+              "tags": "[parameters('tags')]",
+              "sku": {
+                "name": "Basic"
+              },
+              "properties": {
+                "adminUserEnabled": true
+              }
+            }
+          ],
+          "outputs": {
+            "loginServer": {
+              "type": "string",
+              "value": "[reference(resourceId('Microsoft.ContainerRegistry/registries', parameters('name')), '2023-07-01').loginServer]"
+            },
+            "name": {
+              "type": "string",
+              "value": "[parameters('name')]"
+            }
+          }
+        }
+      }
+    },
+    {
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2025-04-01",
+      "name": "keyvault-deployment",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "name": {
+            "value": "[format('{0}-kv', variables('namePrefix'))]"
+          },
+          "location": {
+            "value": "[parameters('location')]"
+          },
+          "tags": {
+            "value": "[variables('tags')]"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.40.2.10011",
+              "templateHash": "5859566013380366961"
+            }
+          },
+          "parameters": {
+            "name": {
+              "type": "string",
+              "metadata": {
+                "description": "Key Vault name"
+              }
+            },
+            "location": {
+              "type": "string",
+              "metadata": {
+                "description": "Azure region"
+              }
+            },
+            "tags": {
+              "type": "object",
+              "metadata": {
+                "description": "Resource tags"
+              }
+            }
+          },
+          "resources": [
+            {
+              "type": "Microsoft.KeyVault/vaults",
+              "apiVersion": "2023-07-01",
+              "name": "[parameters('name')]",
+              "location": "[parameters('location')]",
+              "tags": "[parameters('tags')]",
+              "properties": {
+                "sku": {
+                  "family": "A",
+                  "name": "standard"
+                },
+                "tenantId": "[subscription().tenantId]",
+                "enableRbacAuthorization": true,
+                "enableSoftDelete": true,
+                "softDeleteRetentionInDays": 30,
+                "enabledForDeployment": false,
+                "enabledForDiskEncryption": false,
+                "enabledForTemplateDeployment": true,
+                "networkAcls": {
+                  "defaultAction": "Allow",
+                  "bypass": "AzureServices"
+                }
+              }
+            }
+          ],
+          "outputs": {
+            "name": {
+              "type": "string",
+              "value": "[parameters('name')]"
+            },
+            "uri": {
+              "type": "string",
+              "value": "[reference(resourceId('Microsoft.KeyVault/vaults', parameters('name')), '2023-07-01').vaultUri]"
+            },
+            "id": {
+              "type": "string",
+              "value": "[resourceId('Microsoft.KeyVault/vaults', parameters('name'))]"
+            }
+          }
+        }
+      }
+    },
+    {
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2025-04-01",
+      "name": "monitoring-deployment",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "namePrefix": {
+            "value": "[variables('namePrefix')]"
+          },
+          "location": {
+            "value": "[parameters('location')]"
+          },
+          "tags": {
+            "value": "[variables('tags')]"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.40.2.10011",
+              "templateHash": "3286641657633885495"
+            }
+          },
+          "parameters": {
+            "namePrefix": {
+              "type": "string",
+              "metadata": {
+                "description": "Resource name prefix"
+              }
+            },
+            "location": {
+              "type": "string",
+              "metadata": {
+                "description": "Azure region"
+              }
+            },
+            "tags": {
+              "type": "object",
+              "metadata": {
+                "description": "Resource tags"
+              }
+            }
+          },
+          "resources": [
+            {
+              "type": "Microsoft.OperationalInsights/workspaces",
+              "apiVersion": "2022-10-01",
+              "name": "[format('{0}-law', parameters('namePrefix'))]",
+              "location": "[parameters('location')]",
+              "tags": "[parameters('tags')]",
+              "properties": {
+                "sku": {
+                  "name": "PerGB2018"
+                },
+                "retentionInDays": 30
+              }
+            },
+            {
+              "type": "Microsoft.Insights/components",
+              "apiVersion": "2020-02-02",
+              "name": "[format('{0}-ai', parameters('namePrefix'))]",
+              "location": "[parameters('location')]",
+              "tags": "[parameters('tags')]",
+              "kind": "web",
+              "properties": {
+                "Application_Type": "web",
+                "WorkspaceResourceId": "[resourceId('Microsoft.OperationalInsights/workspaces', format('{0}-law', parameters('namePrefix')))]",
+                "IngestionMode": "LogAnalytics",
+                "publicNetworkAccessForIngestion": "Enabled",
+                "publicNetworkAccessForQuery": "Enabled"
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.OperationalInsights/workspaces', format('{0}-law', parameters('namePrefix')))]"
+              ]
+            }
+          ],
+          "outputs": {
+            "logAnalyticsWorkspaceId": {
+              "type": "string",
+              "value": "[resourceId('Microsoft.OperationalInsights/workspaces', format('{0}-law', parameters('namePrefix')))]"
+            },
+            "appInsightsId": {
+              "type": "string",
+              "value": "[resourceId('Microsoft.Insights/components', format('{0}-ai', parameters('namePrefix')))]"
+            },
+            "appInsightsConnectionString": {
+              "type": "string",
+              "value": "[reference(resourceId('Microsoft.Insights/components', format('{0}-ai', parameters('namePrefix'))), '2020-02-02').ConnectionString]"
+            },
+            "appInsightsInstrumentationKey": {
+              "type": "string",
+              "value": "[reference(resourceId('Microsoft.Insights/components', format('{0}-ai', parameters('namePrefix'))), '2020-02-02').InstrumentationKey]"
+            }
+          }
+        }
+      }
+    },
+    {
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2025-04-01",
+      "name": "postgresql-deployment",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "name": {
+            "value": "[format('{0}-pg', variables('namePrefix'))]"
+          },
+          "location": {
+            "value": "[parameters('location')]"
+          },
+          "tags": {
+            "value": "[variables('tags')]"
+          },
+          "administratorLogin": {
+            "value": "[parameters('dbAdminUsername')]"
+          },
+          "administratorPassword": {
+            "value": "[parameters('dbAdminPassword')]"
+          },
+          "skuName": "[if(equals(parameters('environment'), 'prod'), createObject('value', 'Standard_D2s_v3'), createObject('value', 'Standard_B1ms'))]",
+          "skuTier": "[if(equals(parameters('environment'), 'prod'), createObject('value', 'GeneralPurpose'), createObject('value', 'Burstable'))]",
+          "storageSizeGB": "[if(equals(parameters('environment'), 'prod'), createObject('value', 64), createObject('value', 32))]"
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.40.2.10011",
+              "templateHash": "10931772999060367701"
+            }
+          },
+          "parameters": {
+            "name": {
+              "type": "string",
+              "metadata": {
+                "description": "PostgreSQL server name"
+              }
+            },
+            "location": {
+              "type": "string",
+              "metadata": {
+                "description": "Azure region"
+              }
+            },
+            "tags": {
+              "type": "object",
+              "metadata": {
+                "description": "Resource tags"
+              }
+            },
+            "administratorLogin": {
+              "type": "string",
+              "metadata": {
+                "description": "Administrator login"
+              }
+            },
+            "administratorPassword": {
+              "type": "securestring",
+              "metadata": {
+                "description": "Administrator password"
+              }
+            },
+            "skuName": {
+              "type": "string",
+              "metadata": {
+                "description": "SKU name"
+              }
+            },
+            "skuTier": {
+              "type": "string",
+              "allowedValues": [
+                "Burstable",
+                "GeneralPurpose",
+                "MemoryOptimized"
+              ],
+              "metadata": {
+                "description": "SKU tier"
+              }
+            },
+            "storageSizeGB": {
+              "type": "int",
+              "metadata": {
+                "description": "Storage size in GB"
+              }
+            }
+          },
+          "resources": [
+            {
+              "type": "Microsoft.DBforPostgreSQL/flexibleServers",
+              "apiVersion": "2024-08-01",
+              "name": "[parameters('name')]",
+              "location": "[parameters('location')]",
+              "tags": "[parameters('tags')]",
+              "sku": {
+                "name": "[parameters('skuName')]",
+                "tier": "[parameters('skuTier')]"
+              },
+              "properties": {
+                "version": "16",
+                "administratorLogin": "[parameters('administratorLogin')]",
+                "administratorLoginPassword": "[parameters('administratorPassword')]",
+                "storage": {
+                  "storageSizeGB": "[parameters('storageSizeGB')]"
+                },
+                "backup": {
+                  "backupRetentionDays": 7,
+                  "geoRedundantBackup": "Disabled"
+                },
+                "highAvailability": {
+                  "mode": "Disabled"
+                }
+              }
+            },
+            {
+              "type": "Microsoft.DBforPostgreSQL/flexibleServers/firewallRules",
+              "apiVersion": "2024-08-01",
+              "name": "[format('{0}/{1}', parameters('name'), 'AllowAzureServices')]",
+              "properties": {
+                "startIpAddress": "0.0.0.0",
+                "endIpAddress": "0.0.0.0"
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.DBforPostgreSQL/flexibleServers', parameters('name'))]"
+              ]
+            },
+            {
+              "type": "Microsoft.DBforPostgreSQL/flexibleServers/databases",
+              "apiVersion": "2024-08-01",
+              "name": "[format('{0}/{1}', parameters('name'), 'blogdb')]",
+              "properties": {
+                "charset": "UTF8",
+                "collation": "en_US.utf8"
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.DBforPostgreSQL/flexibleServers', parameters('name'))]"
+              ]
+            }
+          ],
+          "outputs": {
+            "fqdn": {
+              "type": "string",
+              "value": "[reference(resourceId('Microsoft.DBforPostgreSQL/flexibleServers', parameters('name')), '2024-08-01').fullyQualifiedDomainName]"
+            },
+            "name": {
+              "type": "string",
+              "value": "[parameters('name')]"
+            }
+          }
+        }
+      }
+    },
+    {
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2025-04-01",
+      "name": "redis-deployment",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "name": {
+            "value": "[format('{0}-redis', variables('namePrefix'))]"
+          },
+          "location": {
+            "value": "[parameters('location')]"
+          },
+          "tags": {
+            "value": "[variables('tags')]"
+          },
+          "skuName": "[if(equals(parameters('environment'), 'prod'), createObject('value', 'Standard'), createObject('value', 'Basic'))]",
+          "skuFamily": {
+            "value": "C"
+          },
+          "skuCapacity": "[if(equals(parameters('environment'), 'prod'), createObject('value', 1), createObject('value', 0))]"
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.40.2.10011",
+              "templateHash": "17237170363468855234"
+            }
+          },
+          "parameters": {
+            "name": {
+              "type": "string",
+              "metadata": {
+                "description": "Redis cache name"
+              }
+            },
+            "location": {
+              "type": "string",
+              "metadata": {
+                "description": "Azure region"
+              }
+            },
+            "tags": {
+              "type": "object",
+              "metadata": {
+                "description": "Resource tags"
+              }
+            },
+            "skuName": {
+              "type": "string",
+              "allowedValues": [
+                "Basic",
+                "Standard",
+                "Premium"
+              ],
+              "metadata": {
+                "description": "SKU name"
+              }
+            },
+            "skuFamily": {
+              "type": "string",
+              "metadata": {
+                "description": "SKU family"
+              }
+            },
+            "skuCapacity": {
+              "type": "int",
+              "metadata": {
+                "description": "SKU capacity"
+              }
+            }
+          },
+          "resources": [
+            {
+              "type": "Microsoft.Cache/redis",
+              "apiVersion": "2023-08-01",
+              "name": "[parameters('name')]",
+              "location": "[parameters('location')]",
+              "tags": "[parameters('tags')]",
+              "properties": {
+                "sku": {
+                  "name": "[parameters('skuName')]",
+                  "family": "[parameters('skuFamily')]",
+                  "capacity": "[parameters('skuCapacity')]"
+                },
+                "enableNonSslPort": false,
+                "minimumTlsVersion": "1.2",
+                "redisConfiguration": {
+                  "maxmemory-policy": "allkeys-lru"
+                }
+              }
+            }
+          ],
+          "outputs": {
+            "hostname": {
+              "type": "string",
+              "value": "[reference(resourceId('Microsoft.Cache/redis', parameters('name')), '2023-08-01').hostName]"
+            },
+            "port": {
+              "type": "int",
+              "value": "[reference(resourceId('Microsoft.Cache/redis', parameters('name')), '2023-08-01').sslPort]"
+            },
+            "name": {
+              "type": "string",
+              "value": "[parameters('name')]"
+            }
+          }
+        }
+      }
+    },
+    {
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2025-04-01",
+      "name": "storage-deployment",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "name": {
+            "value": "[take(replace(format('{0}{1}st{2}', parameters('baseName'), parameters('environment'), uniqueString(resourceGroup().id)), '-', ''), 24)]"
+          },
+          "location": {
+            "value": "[parameters('location')]"
+          },
+          "tags": {
+            "value": "[variables('tags')]"
+          },
+          "containerName": {
+            "value": "blog-images"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.40.2.10011",
+              "templateHash": "2601612610939589824"
+            }
+          },
+          "parameters": {
+            "name": {
+              "type": "string",
+              "metadata": {
+                "description": "Storage account name (must be globally unique, alphanumeric, lowercase)"
+              }
+            },
+            "location": {
+              "type": "string",
+              "metadata": {
+                "description": "Azure region"
+              }
+            },
+            "tags": {
+              "type": "object",
+              "metadata": {
+                "description": "Resource tags"
+              }
+            },
+            "containerName": {
+              "type": "string",
+              "metadata": {
+                "description": "Blob container name"
+              }
+            }
+          },
+          "resources": [
+            {
+              "type": "Microsoft.Storage/storageAccounts",
+              "apiVersion": "2023-01-01",
+              "name": "[parameters('name')]",
+              "location": "[parameters('location')]",
+              "tags": "[parameters('tags')]",
+              "sku": {
+                "name": "Standard_LRS"
+              },
+              "kind": "StorageV2",
+              "properties": {
+                "accessTier": "Hot",
+                "supportsHttpsTrafficOnly": true,
+                "minimumTlsVersion": "TLS1_2",
+                "allowBlobPublicAccess": true
+              }
+            },
+            {
+              "type": "Microsoft.Storage/storageAccounts/blobServices",
+              "apiVersion": "2023-01-01",
+              "name": "[format('{0}/{1}', parameters('name'), 'default')]",
+              "dependsOn": [
+                "[resourceId('Microsoft.Storage/storageAccounts', parameters('name'))]"
+              ]
+            },
+            {
+              "type": "Microsoft.Storage/storageAccounts/blobServices/containers",
+              "apiVersion": "2023-01-01",
+              "name": "[format('{0}/{1}/{2}', parameters('name'), 'default', parameters('containerName'))]",
+              "properties": {
+                "publicAccess": "Blob"
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.Storage/storageAccounts/blobServices', parameters('name'), 'default')]"
+              ]
+            }
+          ],
+          "outputs": {
+            "name": {
+              "type": "string",
+              "value": "[parameters('name')]"
+            },
+            "primaryKey": {
+              "type": "string",
+              "value": "[listKeys(resourceId('Microsoft.Storage/storageAccounts', parameters('name')), '2023-01-01').keys[0].value]"
+            },
+            "blobEndpoint": {
+              "type": "string",
+              "value": "[reference(resourceId('Microsoft.Storage/storageAccounts', parameters('name')), '2023-01-01').primaryEndpoints.blob]"
+            }
+          }
+        }
+      }
+    },
+    {
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2025-04-01",
+      "name": "aks-deployment",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "name": {
+            "value": "[format('{0}-aks', variables('namePrefix'))]"
+          },
+          "location": {
+            "value": "[parameters('location')]"
+          },
+          "tags": {
+            "value": "[variables('tags')]"
+          },
+          "nodeVmSize": {
+            "value": "[parameters('aksNodeVmSize')]"
+          },
+          "nodeCount": {
+            "value": "[parameters('aksNodeCount')]"
+          },
+          "logAnalyticsWorkspaceId": {
+            "value": "[reference(resourceId('Microsoft.Resources/deployments', 'monitoring-deployment'), '2025-04-01').outputs.logAnalyticsWorkspaceId.value]"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.40.2.10011",
+              "templateHash": "9986869914512985708"
+            }
+          },
+          "parameters": {
+            "name": {
+              "type": "string",
+              "metadata": {
+                "description": "AKS cluster name"
+              }
+            },
+            "location": {
+              "type": "string",
+              "metadata": {
+                "description": "Azure region"
+              }
+            },
+            "tags": {
+              "type": "object",
+              "metadata": {
+                "description": "Resource tags"
+              }
+            },
+            "nodeVmSize": {
+              "type": "string",
+              "metadata": {
+                "description": "Node VM size"
+              }
+            },
+            "nodeCount": {
+              "type": "int",
+              "metadata": {
+                "description": "Node count"
+              }
+            },
+            "logAnalyticsWorkspaceId": {
+              "type": "string",
+              "metadata": {
+                "description": "Log Analytics workspace resource ID"
+              }
+            }
+          },
+          "resources": [
+            {
+              "type": "Microsoft.ContainerService/managedClusters",
+              "apiVersion": "2024-09-01",
+              "name": "[parameters('name')]",
+              "location": "[parameters('location')]",
+              "tags": "[parameters('tags')]",
+              "identity": {
+                "type": "SystemAssigned"
+              },
+              "properties": {
+                "dnsPrefix": "[parameters('name')]",
+                "kubernetesVersion": "1.33",
+                "networkProfile": {
+                  "networkPlugin": "azure",
+                  "networkPolicy": "calico",
+                  "loadBalancerSku": "standard"
+                },
+                "agentPoolProfiles": [
+                  {
+                    "name": "systempool",
+                    "count": "[parameters('nodeCount')]",
+                    "vmSize": "[parameters('nodeVmSize')]",
+                    "osType": "Linux",
+                    "osDiskSizeGB": 30,
+                    "mode": "System",
+                    "enableAutoScaling": true,
+                    "minCount": 1,
+                    "maxCount": "[add(parameters('nodeCount'), 2)]"
+                  }
+                ],
+                "addonProfiles": {
+                  "omsagent": {
+                    "enabled": true,
+                    "config": {
+                      "logAnalyticsWorkspaceResourceID": "[parameters('logAnalyticsWorkspaceId')]"
+                    }
+                  },
+                  "azureKeyvaultSecretsProvider": {
+                    "enabled": true,
+                    "config": {
+                      "enableSecretRotation": "true",
+                      "rotationPollInterval": "2m"
+                    }
+                  }
+                }
+              }
+            }
+          ],
+          "outputs": {
+            "clusterName": {
+              "type": "string",
+              "value": "[parameters('name')]"
+            },
+            "clusterFqdn": {
+              "type": "string",
+              "value": "[reference(resourceId('Microsoft.ContainerService/managedClusters', parameters('name')), '2024-09-01').fqdn]"
+            },
+            "kubeletIdentityObjectId": {
+              "type": "string",
+              "value": "[reference(resourceId('Microsoft.ContainerService/managedClusters', parameters('name')), '2024-09-01').identityProfile.kubeletidentity.objectId]"
+            }
+          }
+        }
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Resources/deployments', 'monitoring-deployment')]"
+      ]
+    },
+    {
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2025-04-01",
+      "name": "eventhubs-deployment",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "namePrefix": {
+            "value": "[variables('namePrefix')]"
+          },
+          "location": {
+            "value": "[parameters('location')]"
+          },
+          "tags": {
+            "value": "[variables('tags')]"
+          },
+          "skuTier": "[if(equals(parameters('environment'), 'prod'), createObject('value', 'Standard'), createObject('value', 'Standard'))]",
+          "capacity": "[if(equals(parameters('environment'), 'prod'), createObject('value', 2), createObject('value', 1))]",
+          "kafkaEnabled": {
+            "value": true
+          },
+          "messageRetentionDays": "[if(equals(parameters('environment'), 'prod'), createObject('value', 7), createObject('value', 3))]",
+          "partitionCount": "[if(equals(parameters('environment'), 'prod'), createObject('value', 8), createObject('value', 4))]"
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.40.2.10011",
+              "templateHash": "10642306177320338848"
+            }
+          },
+          "parameters": {
+            "namePrefix": {
+              "type": "string",
+              "metadata": {
+                "description": "Resource name prefix"
+              }
+            },
+            "location": {
+              "type": "string",
+              "metadata": {
+                "description": "Azure region"
+              }
+            },
+            "tags": {
+              "type": "object",
+              "metadata": {
+                "description": "Resource tags"
+              }
+            },
+            "skuTier": {
+              "type": "string",
+              "defaultValue": "Standard",
+              "allowedValues": [
+                "Basic",
+                "Standard",
+                "Premium"
+              ],
+              "metadata": {
+                "description": "SKU tier: Basic, Standard, or Premium"
+              }
+            },
+            "capacity": {
+              "type": "int",
+              "defaultValue": 1,
+              "minValue": 1,
+              "maxValue": 20,
+              "metadata": {
+                "description": "Throughput units (1-20 for Standard)"
+              }
+            },
+            "kafkaEnabled": {
+              "type": "bool",
+              "defaultValue": true,
+              "metadata": {
+                "description": "Enable Kafka support"
+              }
+            },
+            "messageRetentionDays": {
+              "type": "int",
+              "defaultValue": 3,
+              "minValue": 1,
+              "maxValue": 7,
+              "metadata": {
+                "description": "Message retention in days"
+              }
+            },
+            "partitionCount": {
+              "type": "int",
+              "defaultValue": 4,
+              "minValue": 1,
+              "maxValue": 32,
+              "metadata": {
+                "description": "Number of partitions per event hub"
+              }
+            }
+          },
+          "variables": {
+            "namespaceName": "[format('{0}-ehns', parameters('namePrefix'))]"
+          },
+          "resources": [
+            {
+              "type": "Microsoft.EventHub/namespaces",
+              "apiVersion": "2024-01-01",
+              "name": "[if(greaterOrEquals(length(variables('namespaceName')), 6), variables('namespaceName'), format('{0}-ns', variables('namespaceName')))]",
+              "location": "[parameters('location')]",
+              "tags": "[parameters('tags')]",
+              "sku": {
+                "name": "[parameters('skuTier')]",
+                "tier": "[parameters('skuTier')]",
+                "capacity": "[parameters('capacity')]"
+              },
+              "properties": {
+                "isAutoInflateEnabled": "[equals(parameters('skuTier'), 'Standard')]",
+                "maximumThroughputUnits": "[if(equals(parameters('skuTier'), 'Standard'), 10, 0)]",
+                "kafkaEnabled": "[parameters('kafkaEnabled')]",
+                "minimumTlsVersion": "1.2",
+                "publicNetworkAccess": "Enabled",
+                "disableLocalAuth": false,
+                "zoneRedundant": "[equals(parameters('skuTier'), 'Premium')]"
+              }
+            },
+            {
+              "type": "Microsoft.EventHub/namespaces/eventhubs",
+              "apiVersion": "2024-01-01",
+              "name": "[format('{0}/{1}', if(greaterOrEquals(length(variables('namespaceName')), 6), variables('namespaceName'), format('{0}-ns', variables('namespaceName'))), 'telemetry-events')]",
+              "properties": {
+                "messageRetentionInDays": "[parameters('messageRetentionDays')]",
+                "partitionCount": "[parameters('partitionCount')]",
+                "status": "Active"
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.EventHub/namespaces', if(greaterOrEquals(length(variables('namespaceName')), 6), variables('namespaceName'), format('{0}-ns', variables('namespaceName'))))]"
+              ]
+            },
+            {
+              "type": "Microsoft.EventHub/namespaces/eventhubs/consumergroups",
+              "apiVersion": "2024-01-01",
+              "name": "[format('{0}/{1}/{2}', if(greaterOrEquals(length(variables('namespaceName')), 6), variables('namespaceName'), format('{0}-ns', variables('namespaceName'))), 'telemetry-events', 'adx-consumer')]",
+              "properties": {
+                "userMetadata": "Consumer group for Azure Data Explorer ingestion"
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.EventHub/namespaces/eventhubs', if(greaterOrEquals(length(variables('namespaceName')), 6), variables('namespaceName'), format('{0}-ns', variables('namespaceName'))), 'telemetry-events')]"
+              ]
+            },
+            {
+              "type": "Microsoft.EventHub/namespaces/eventhubs/consumergroups",
+              "apiVersion": "2024-01-01",
+              "name": "[format('{0}/{1}/{2}', if(greaterOrEquals(length(variables('namespaceName')), 6), variables('namespaceName'), format('{0}-ns', variables('namespaceName'))), 'telemetry-events', 'databricks-consumer')]",
+              "properties": {
+                "userMetadata": "Consumer group for Azure Databricks streaming"
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.EventHub/namespaces/eventhubs', if(greaterOrEquals(length(variables('namespaceName')), 6), variables('namespaceName'), format('{0}-ns', variables('namespaceName'))), 'telemetry-events')]"
+              ]
+            },
+            {
+              "type": "Microsoft.EventHub/namespaces/eventhubs/consumergroups",
+              "apiVersion": "2024-01-01",
+              "name": "[format('{0}/{1}/{2}', if(greaterOrEquals(length(variables('namespaceName')), 6), variables('namespaceName'), format('{0}-ns', variables('namespaceName'))), 'telemetry-events', 'otel-consumer')]",
+              "properties": {
+                "userMetadata": "Consumer group for OpenTelemetry Collector"
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.EventHub/namespaces/eventhubs', if(greaterOrEquals(length(variables('namespaceName')), 6), variables('namespaceName'), format('{0}-ns', variables('namespaceName'))), 'telemetry-events')]"
+              ]
+            },
+            {
+              "type": "Microsoft.EventHub/namespaces/eventhubs",
+              "apiVersion": "2024-01-01",
+              "name": "[format('{0}/{1}', if(greaterOrEquals(length(variables('namespaceName')), 6), variables('namespaceName'), format('{0}-ns', variables('namespaceName'))), 'otel-traces')]",
+              "properties": {
+                "messageRetentionInDays": "[parameters('messageRetentionDays')]",
+                "partitionCount": 2,
+                "status": "Active"
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.EventHub/namespaces', if(greaterOrEquals(length(variables('namespaceName')), 6), variables('namespaceName'), format('{0}-ns', variables('namespaceName'))))]"
+              ]
+            },
+            {
+              "type": "Microsoft.EventHub/namespaces/authorizationRules",
+              "apiVersion": "2024-01-01",
+              "name": "[format('{0}/{1}', if(greaterOrEquals(length(variables('namespaceName')), 6), variables('namespaceName'), format('{0}-ns', variables('namespaceName'))), 'app-send-policy')]",
+              "properties": {
+                "rights": [
+                  "Send"
+                ]
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.EventHub/namespaces', if(greaterOrEquals(length(variables('namespaceName')), 6), variables('namespaceName'), format('{0}-ns', variables('namespaceName'))))]"
+              ]
+            },
+            {
+              "type": "Microsoft.EventHub/namespaces/authorizationRules",
+              "apiVersion": "2024-01-01",
+              "name": "[format('{0}/{1}', if(greaterOrEquals(length(variables('namespaceName')), 6), variables('namespaceName'), format('{0}-ns', variables('namespaceName'))), 'consumer-listen-policy')]",
+              "properties": {
+                "rights": [
+                  "Listen"
+                ]
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.EventHub/namespaces', if(greaterOrEquals(length(variables('namespaceName')), 6), variables('namespaceName'), format('{0}-ns', variables('namespaceName'))))]"
+              ]
+            },
+            {
+              "type": "Microsoft.EventHub/namespaces/authorizationRules",
+              "apiVersion": "2024-01-01",
+              "name": "[format('{0}/{1}', if(greaterOrEquals(length(variables('namespaceName')), 6), variables('namespaceName'), format('{0}-ns', variables('namespaceName'))), 'otel-policy')]",
+              "properties": {
+                "rights": [
+                  "Send",
+                  "Listen"
+                ]
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.EventHub/namespaces', if(greaterOrEquals(length(variables('namespaceName')), 6), variables('namespaceName'), format('{0}-ns', variables('namespaceName'))))]"
+              ]
+            }
+          ],
+          "outputs": {
+            "namespaceName": {
+              "type": "string",
+              "value": "[if(greaterOrEquals(length(variables('namespaceName')), 6), variables('namespaceName'), format('{0}-ns', variables('namespaceName')))]"
+            },
+            "namespaceId": {
+              "type": "string",
+              "value": "[resourceId('Microsoft.EventHub/namespaces', if(greaterOrEquals(length(variables('namespaceName')), 6), variables('namespaceName'), format('{0}-ns', variables('namespaceName'))))]"
+            },
+            "namespaceFqdn": {
+              "type": "string",
+              "value": "[format('{0}.servicebus.windows.net', if(greaterOrEquals(length(variables('namespaceName')), 6), variables('namespaceName'), format('{0}-ns', variables('namespaceName'))))]"
+            },
+            "sendConnectionString": {
+              "type": "string",
+              "value": "[listKeys(resourceId('Microsoft.EventHub/namespaces/authorizationRules', if(greaterOrEquals(length(variables('namespaceName')), 6), variables('namespaceName'), format('{0}-ns', variables('namespaceName'))), 'app-send-policy'), '2024-01-01').primaryConnectionString]"
+            },
+            "listenConnectionString": {
+              "type": "string",
+              "value": "[listKeys(resourceId('Microsoft.EventHub/namespaces/authorizationRules', if(greaterOrEquals(length(variables('namespaceName')), 6), variables('namespaceName'), format('{0}-ns', variables('namespaceName'))), 'consumer-listen-policy'), '2024-01-01').primaryConnectionString]"
+            },
+            "otelConnectionString": {
+              "type": "string",
+              "value": "[listKeys(resourceId('Microsoft.EventHub/namespaces/authorizationRules', if(greaterOrEquals(length(variables('namespaceName')), 6), variables('namespaceName'), format('{0}-ns', variables('namespaceName'))), 'otel-policy'), '2024-01-01').primaryConnectionString]"
+            },
+            "telemetryEventHubName": {
+              "type": "string",
+              "value": "telemetry-events"
+            },
+            "otelTracesHubName": {
+              "type": "string",
+              "value": "otel-traces"
+            }
+          }
+        }
+      }
+    },
+    {
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2025-04-01",
+      "name": "dataexplorer-deployment",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "namePrefix": {
+            "value": "[variables('namePrefix')]"
+          },
+          "location": {
+            "value": "[parameters('location')]"
+          },
+          "tags": {
+            "value": "[variables('tags')]"
+          },
+          "skuName": "[if(equals(parameters('environment'), 'prod'), createObject('value', 'Standard_E2a_v4'), createObject('value', 'Dev(No SLA)_Standard_E2a_v4'))]",
+          "capacity": "[if(equals(parameters('environment'), 'prod'), createObject('value', 2), createObject('value', 1))]",
+          "retentionDays": "[if(equals(parameters('environment'), 'prod'), createObject('value', 365), createObject('value', 90))]",
+          "cacheDays": "[if(equals(parameters('environment'), 'prod'), createObject('value', 31), createObject('value', 7))]",
+          "eventHubResourceId": "[if(not(equals(reference(resourceId('Microsoft.Resources/deployments', 'eventhubs-deployment'), '2025-04-01').outputs.namespaceName.value, '')), createObject('value', format('{0}/providers/Microsoft.EventHub/namespaces/{1}/eventhubs/telemetry-events', resourceGroup().id, reference(resourceId('Microsoft.Resources/deployments', 'eventhubs-deployment'), '2025-04-01').outputs.namespaceName.value)), createObject('value', ''))]",
+          "eventHubConsumerGroup": {
+            "value": "adx-consumer"
+          },
+          "eventHubNamespaceId": {
+            "value": "[reference(resourceId('Microsoft.Resources/deployments', 'eventhubs-deployment'), '2025-04-01').outputs.namespaceId.value]"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.40.2.10011",
+              "templateHash": "8283759712799190720"
+            }
+          },
+          "parameters": {
+            "namePrefix": {
+              "type": "string",
+              "metadata": {
+                "description": "Resource name prefix"
+              }
+            },
+            "location": {
+              "type": "string",
+              "metadata": {
+                "description": "Azure region"
+              }
+            },
+            "tags": {
+              "type": "object",
+              "metadata": {
+                "description": "Resource tags"
+              }
+            },
+            "skuName": {
+              "type": "string",
+              "defaultValue": "Dev(No SLA)_Standard_E2a_v4",
+              "allowedValues": [
+                "Dev(No SLA)_Standard_E2a_v4",
+                "Standard_E2a_v4",
+                "Standard_E4a_v4"
+              ],
+              "metadata": {
+                "description": "ADX SKU name"
+              }
+            },
+            "capacity": {
+              "type": "int",
+              "defaultValue": 1,
+              "minValue": 1,
+              "maxValue": 10,
+              "metadata": {
+                "description": "Number of instances"
+              }
+            },
+            "retentionDays": {
+              "type": "int",
+              "defaultValue": 365,
+              "minValue": 1,
+              "maxValue": 3650,
+              "metadata": {
+                "description": "Database retention in days"
+              }
+            },
+            "cacheDays": {
+              "type": "int",
+              "defaultValue": 31,
+              "minValue": 1,
+              "maxValue": 3650,
+              "metadata": {
+                "description": "Database cache period in days"
+              }
+            },
+            "eventHubResourceId": {
+              "type": "string",
+              "defaultValue": "",
+              "metadata": {
+                "description": "Event Hub resource ID for data connection"
+              }
+            },
+            "eventHubConsumerGroup": {
+              "type": "string",
+              "defaultValue": "adx-consumer",
+              "metadata": {
+                "description": "Event Hub consumer group for ADX"
+              }
+            },
+            "eventHubNamespaceId": {
+              "type": "string",
+              "defaultValue": "",
+              "metadata": {
+                "description": "Event Hub namespace resource ID (for role assignment)"
+              }
+            }
+          },
+          "resources": [
+            {
+              "type": "Microsoft.Kusto/clusters",
+              "apiVersion": "2023-08-15",
+              "name": "[format('{0}adx', replace(parameters('namePrefix'), '-', ''))]",
+              "location": "[parameters('location')]",
+              "tags": "[parameters('tags')]",
+              "sku": {
+                "name": "[parameters('skuName')]",
+                "tier": "[if(equals(parameters('skuName'), 'Dev(No SLA)_Standard_E2a_v4'), 'Basic', 'Standard')]",
+                "capacity": "[parameters('capacity')]"
+              },
+              "identity": {
+                "type": "SystemAssigned"
+              },
+              "properties": {
+                "enableStreamingIngest": true,
+                "enableAutoStop": true,
+                "enablePurge": false,
+                "publicNetworkAccess": "Enabled"
+              }
+            },
+            {
+              "type": "Microsoft.Kusto/clusters/databases",
+              "apiVersion": "2023-08-15",
+              "name": "[format('{0}/{1}', format('{0}adx', replace(parameters('namePrefix'), '-', '')), 'TelemetryDb')]",
+              "location": "[parameters('location')]",
+              "kind": "ReadWrite",
+              "properties": {
+                "softDeletePeriod": "[format('P{0}D', parameters('retentionDays'))]",
+                "hotCachePeriod": "[format('P{0}D', parameters('cacheDays'))]"
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.Kusto/clusters', format('{0}adx', replace(parameters('namePrefix'), '-', '')))]"
+              ]
+            },
+            {
+              "type": "Microsoft.Kusto/clusters/databases/scripts",
+              "apiVersion": "2023-08-15",
+              "name": "[format('{0}/{1}/{2}', format('{0}adx', replace(parameters('namePrefix'), '-', '')), 'TelemetryDb', 'create-tables')]",
+              "properties": {
+                "scriptContent": "      // Page view and interaction events from Event Hubs\r\n      .create-merge table TelemetryEvents (\r\n        EventType: string,\r\n        Timestamp: datetime,\r\n        SessionId: string,\r\n        VisitorId: string,\r\n        Url: string,\r\n        Path: string,\r\n        Referrer: string,\r\n        UserAgent: string,\r\n        ScreenWidth: int,\r\n        ScreenHeight: int,\r\n        Language: string,\r\n        Timezone: string,\r\n        Country: string,\r\n        City: string,\r\n        Region: string,\r\n        Properties: dynamic\r\n      )\r\n\r\n      // JSON ingestion mapping for Event Hub data\r\n      .create-or-alter table TelemetryEvents ingestion json mapping 'TelemetryEventsMapping' '[{\"column\":\"EventType\",\"path\":\"$.eventType\",\"datatype\":\"string\"},{\"column\":\"Timestamp\",\"path\":\"$.timestamp\",\"datatype\":\"datetime\"},{\"column\":\"SessionId\",\"path\":\"$.sessionId\",\"datatype\":\"string\"},{\"column\":\"VisitorId\",\"path\":\"$.visitorId\",\"datatype\":\"string\"},{\"column\":\"Url\",\"path\":\"$.url\",\"datatype\":\"string\"},{\"column\":\"Path\",\"path\":\"$.path\",\"datatype\":\"string\"},{\"column\":\"Referrer\",\"path\":\"$.referrer\",\"datatype\":\"string\"},{\"column\":\"UserAgent\",\"path\":\"$.userAgent\",\"datatype\":\"string\"},{\"column\":\"ScreenWidth\",\"path\":\"$.screenWidth\",\"datatype\":\"int\"},{\"column\":\"ScreenHeight\",\"path\":\"$.screenHeight\",\"datatype\":\"int\"},{\"column\":\"Language\",\"path\":\"$.language\",\"datatype\":\"string\"},{\"column\":\"Timezone\",\"path\":\"$.timezone\",\"datatype\":\"string\"},{\"column\":\"Country\",\"path\":\"$.country\",\"datatype\":\"string\"},{\"column\":\"City\",\"path\":\"$.city\",\"datatype\":\"string\"},{\"column\":\"Region\",\"path\":\"$.region\",\"datatype\":\"string\"},{\"column\":\"Properties\",\"path\":\"$.properties\",\"datatype\":\"dynamic\"}]'\r\n\r\n      // Materialized view for page views per day per country\r\n      .create-or-alter materialized-view PageViewsByCountry on table TelemetryEvents\r\n      {\r\n        TelemetryEvents\r\n        | where EventType == \"page_view\" or EventType == \"blog_view\"\r\n        | summarize ViewCount = count(), UniqueVisitors = dcount(VisitorId)\r\n          by Country, Path, bin(Timestamp, 1d)\r\n      }\r\n\r\n      // Materialized view for daily unique visitors\r\n      .create-or-alter materialized-view DailyUniqueVisitors on table TelemetryEvents\r\n      {\r\n        TelemetryEvents\r\n        | where EventType == \"page_view\" or EventType == \"blog_view\"\r\n        | summarize UniqueVisitors = dcount(VisitorId), TotalViews = count()\r\n          by bin(Timestamp, 1d)\r\n      }\r\n\r\n      // Retention policy: keep raw data for 365 days\r\n      .alter-merge table TelemetryEvents policy retention softdelete = 365d\r\n\r\n      // Caching policy: hot cache for 31 days\r\n      .alter-merge table TelemetryEvents policy caching hot = 31d\r\n    ",
+                "continueOnErrors": true,
+                "forceUpdateTag": "v1"
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.Kusto/clusters/databases', format('{0}adx', replace(parameters('namePrefix'), '-', '')), 'TelemetryDb')]"
+              ]
+            },
+            {
+              "condition": "[not(equals(parameters('eventHubNamespaceId'), ''))]",
+              "type": "Microsoft.Authorization/roleAssignments",
+              "apiVersion": "2022-04-01",
+              "scope": "[resourceId('Microsoft.EventHub/namespaces', last(split(parameters('eventHubNamespaceId'), '/')))]",
+              "name": "[guid(resourceId('Microsoft.Kusto/clusters', format('{0}adx', replace(parameters('namePrefix'), '-', ''))), parameters('eventHubNamespaceId'), 'a638d3c7-ab3a-488d-b6eb-53e5f7cc5e4f')]",
+              "properties": {
+                "principalId": "[reference(resourceId('Microsoft.Kusto/clusters', format('{0}adx', replace(parameters('namePrefix'), '-', ''))), '2023-08-15', 'full').identity.principalId]",
+                "roleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', 'a638d3c7-ab3a-488d-b6eb-53e5f7cc5e4f')]",
+                "principalType": "ServicePrincipal"
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.Kusto/clusters', format('{0}adx', replace(parameters('namePrefix'), '-', '')))]"
+              ]
+            },
+            {
+              "condition": "[not(equals(parameters('eventHubResourceId'), ''))]",
+              "type": "Microsoft.Kusto/clusters/databases/dataConnections",
+              "apiVersion": "2023-08-15",
+              "name": "[format('{0}/{1}/{2}', format('{0}adx', replace(parameters('namePrefix'), '-', '')), 'TelemetryDb', 'eh-telemetry-ingestion')]",
+              "location": "[parameters('location')]",
+              "kind": "EventHub",
+              "properties": {
+                "eventHubResourceId": "[parameters('eventHubResourceId')]",
+                "consumerGroup": "[parameters('eventHubConsumerGroup')]",
+                "tableName": "TelemetryEvents",
+                "mappingRuleName": "TelemetryEventsMapping",
+                "dataFormat": "MULTIJSON",
+                "compression": "None",
+                "managedIdentityResourceId": "[resourceId('Microsoft.Kusto/clusters', format('{0}adx', replace(parameters('namePrefix'), '-', '')))]"
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.Kusto/clusters', format('{0}adx', replace(parameters('namePrefix'), '-', '')))]",
+                "[extensionResourceId(resourceId('Microsoft.EventHub/namespaces', last(split(parameters('eventHubNamespaceId'), '/'))), 'Microsoft.Authorization/roleAssignments', guid(resourceId('Microsoft.Kusto/clusters', format('{0}adx', replace(parameters('namePrefix'), '-', ''))), parameters('eventHubNamespaceId'), 'a638d3c7-ab3a-488d-b6eb-53e5f7cc5e4f'))]",
+                "[resourceId('Microsoft.Kusto/clusters/databases/scripts', format('{0}adx', replace(parameters('namePrefix'), '-', '')), 'TelemetryDb', 'create-tables')]",
+                "[resourceId('Microsoft.Kusto/clusters/databases', format('{0}adx', replace(parameters('namePrefix'), '-', '')), 'TelemetryDb')]"
+              ]
+            }
+          ],
+          "outputs": {
+            "clusterName": {
+              "type": "string",
+              "value": "[format('{0}adx', replace(parameters('namePrefix'), '-', ''))]"
+            },
+            "clusterId": {
+              "type": "string",
+              "value": "[resourceId('Microsoft.Kusto/clusters', format('{0}adx', replace(parameters('namePrefix'), '-', '')))]"
+            },
+            "clusterUri": {
+              "type": "string",
+              "value": "[reference(resourceId('Microsoft.Kusto/clusters', format('{0}adx', replace(parameters('namePrefix'), '-', ''))), '2023-08-15').uri]"
+            },
+            "databaseName": {
+              "type": "string",
+              "value": "TelemetryDb"
+            },
+            "principalId": {
+              "type": "string",
+              "value": "[reference(resourceId('Microsoft.Kusto/clusters', format('{0}adx', replace(parameters('namePrefix'), '-', ''))), '2023-08-15', 'full').identity.principalId]"
+            }
+          }
+        }
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Resources/deployments', 'eventhubs-deployment')]"
+      ]
+    },
+    {
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2025-04-01",
+      "name": "alerts-deployment",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "namePrefix": {
+            "value": "[variables('namePrefix')]"
+          },
+          "location": {
+            "value": "[parameters('location')]"
+          },
+          "tags": {
+            "value": "[variables('tags')]"
+          },
+          "eventHubNamespaceId": {
+            "value": "[reference(resourceId('Microsoft.Resources/deployments', 'eventhubs-deployment'), '2025-04-01').outputs.namespaceId.value]"
+          },
+          "adxClusterId": {
+            "value": "[reference(resourceId('Microsoft.Resources/deployments', 'dataexplorer-deployment'), '2025-04-01').outputs.clusterId.value]"
+          },
+          "appInsightsId": {
+            "value": "[reference(resourceId('Microsoft.Resources/deployments', 'monitoring-deployment'), '2025-04-01').outputs.appInsightsId.value]"
+          },
+          "alertEmail": {
+            "value": "[parameters('adminEmail')]"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.40.2.10011",
+              "templateHash": "15837128584137719453"
+            }
+          },
+          "parameters": {
+            "namePrefix": {
+              "type": "string",
+              "metadata": {
+                "description": "Resource name prefix"
+              }
+            },
+            "location": {
+              "type": "string",
+              "metadata": {
+                "description": "Azure region"
+              }
+            },
+            "tags": {
+              "type": "object",
+              "metadata": {
+                "description": "Resource tags"
+              }
+            },
+            "eventHubNamespaceId": {
+              "type": "string",
+              "metadata": {
+                "description": "Event Hub namespace resource ID"
+              }
+            },
+            "adxClusterId": {
+              "type": "string",
+              "metadata": {
+                "description": "ADX cluster resource ID"
+              }
+            },
+            "appInsightsId": {
+              "type": "string",
+              "metadata": {
+                "description": "Application Insights resource ID"
+              }
+            },
+            "alertEmail": {
+              "type": "securestring",
+              "metadata": {
+                "description": "Email address for alert notifications"
+              }
+            }
+          },
+          "resources": [
+            {
+              "type": "Microsoft.Insights/actionGroups",
+              "apiVersion": "2023-01-01",
+              "name": "[format('{0}-telemetry-alerts-ag', parameters('namePrefix'))]",
+              "location": "global",
+              "tags": "[parameters('tags')]",
+              "properties": {
+                "groupShortName": "TelAlerts",
+                "enabled": true,
+                "emailReceivers": [
+                  {
+                    "name": "AdminEmail",
+                    "emailAddress": "[parameters('alertEmail')]",
+                    "useCommonAlertSchema": true
+                  }
+                ]
+              }
+            },
+            {
+              "type": "Microsoft.Insights/metricAlerts",
+              "apiVersion": "2018-03-01",
+              "name": "[format('{0}-eh-no-incoming-messages', parameters('namePrefix'))]",
+              "location": "global",
+              "tags": "[parameters('tags')]",
+              "properties": {
+                "description": "No incoming messages to Event Hub for 1 hour — telemetry pipeline may be down.",
+                "severity": 1,
+                "enabled": true,
+                "scopes": [
+                  "[parameters('eventHubNamespaceId')]"
+                ],
+                "evaluationFrequency": "PT15M",
+                "windowSize": "PT1H",
+                "criteria": {
+                  "odata.type": "Microsoft.Azure.Monitor.SingleResourceMultipleMetricCriteria",
+                  "allOf": [
+                    {
+                      "name": "NoIncomingMessages",
+                      "metricName": "IncomingMessages",
+                      "metricNamespace": "Microsoft.EventHub/namespaces",
+                      "operator": "LessThanOrEqual",
+                      "threshold": 0,
+                      "timeAggregation": "Total",
+                      "criterionType": "StaticThresholdCriterion"
+                    }
+                  ]
+                },
+                "actions": [
+                  {
+                    "actionGroupId": "[resourceId('Microsoft.Insights/actionGroups', format('{0}-telemetry-alerts-ag', parameters('namePrefix')))]"
+                  }
+                ]
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.Insights/actionGroups', format('{0}-telemetry-alerts-ag', parameters('namePrefix')))]"
+              ]
+            },
+            {
+              "type": "Microsoft.Insights/metricAlerts",
+              "apiVersion": "2018-03-01",
+              "name": "[format('{0}-eh-throttled-requests', parameters('namePrefix'))]",
+              "location": "global",
+              "tags": "[parameters('tags')]",
+              "properties": {
+                "description": "Event Hub is throttling requests — consider scaling throughput units.",
+                "severity": 2,
+                "enabled": true,
+                "scopes": [
+                  "[parameters('eventHubNamespaceId')]"
+                ],
+                "evaluationFrequency": "PT5M",
+                "windowSize": "PT15M",
+                "criteria": {
+                  "odata.type": "Microsoft.Azure.Monitor.SingleResourceMultipleMetricCriteria",
+                  "allOf": [
+                    {
+                      "name": "ThrottledRequests",
+                      "metricName": "ThrottledRequests",
+                      "metricNamespace": "Microsoft.EventHub/namespaces",
+                      "operator": "GreaterThan",
+                      "threshold": 0,
+                      "timeAggregation": "Total",
+                      "criterionType": "StaticThresholdCriterion"
+                    }
+                  ]
+                },
+                "actions": [
+                  {
+                    "actionGroupId": "[resourceId('Microsoft.Insights/actionGroups', format('{0}-telemetry-alerts-ag', parameters('namePrefix')))]"
+                  }
+                ]
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.Insights/actionGroups', format('{0}-telemetry-alerts-ag', parameters('namePrefix')))]"
+              ]
+            },
+            {
+              "type": "Microsoft.Insights/metricAlerts",
+              "apiVersion": "2018-03-01",
+              "name": "[format('{0}-eh-server-errors', parameters('namePrefix'))]",
+              "location": "global",
+              "tags": "[parameters('tags')]",
+              "properties": {
+                "description": "Event Hub server errors detected — messages may be lost.",
+                "severity": 1,
+                "enabled": true,
+                "scopes": [
+                  "[parameters('eventHubNamespaceId')]"
+                ],
+                "evaluationFrequency": "PT5M",
+                "windowSize": "PT15M",
+                "criteria": {
+                  "odata.type": "Microsoft.Azure.Monitor.SingleResourceMultipleMetricCriteria",
+                  "allOf": [
+                    {
+                      "name": "ServerErrors",
+                      "metricName": "ServerErrors",
+                      "metricNamespace": "Microsoft.EventHub/namespaces",
+                      "operator": "GreaterThan",
+                      "threshold": 5,
+                      "timeAggregation": "Total",
+                      "criterionType": "StaticThresholdCriterion"
+                    }
+                  ]
+                },
+                "actions": [
+                  {
+                    "actionGroupId": "[resourceId('Microsoft.Insights/actionGroups', format('{0}-telemetry-alerts-ag', parameters('namePrefix')))]"
+                  }
+                ]
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.Insights/actionGroups', format('{0}-telemetry-alerts-ag', parameters('namePrefix')))]"
+              ]
+            },
+            {
+              "type": "Microsoft.Insights/metricAlerts",
+              "apiVersion": "2018-03-01",
+              "name": "[format('{0}-adx-ingestion-latency', parameters('namePrefix'))]",
+              "location": "global",
+              "tags": "[parameters('tags')]",
+              "properties": {
+                "description": "ADX ingestion latency exceeds 5 minutes — data may be delayed in dashboards.",
+                "severity": 2,
+                "enabled": true,
+                "scopes": [
+                  "[parameters('adxClusterId')]"
+                ],
+                "evaluationFrequency": "PT5M",
+                "windowSize": "PT15M",
+                "criteria": {
+                  "odata.type": "Microsoft.Azure.Monitor.SingleResourceMultipleMetricCriteria",
+                  "allOf": [
+                    {
+                      "name": "IngestionLatency",
+                      "metricName": "IngestionLatency",
+                      "metricNamespace": "Microsoft.Kusto/clusters",
+                      "operator": "GreaterThan",
+                      "threshold": 300,
+                      "timeAggregation": "Average",
+                      "criterionType": "StaticThresholdCriterion"
+                    }
+                  ]
+                },
+                "actions": [
+                  {
+                    "actionGroupId": "[resourceId('Microsoft.Insights/actionGroups', format('{0}-telemetry-alerts-ag', parameters('namePrefix')))]"
+                  }
+                ]
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.Insights/actionGroups', format('{0}-telemetry-alerts-ag', parameters('namePrefix')))]"
+              ]
+            },
+            {
+              "type": "Microsoft.Insights/metricAlerts",
+              "apiVersion": "2018-03-01",
+              "name": "[format('{0}-adx-ingestion-failures', parameters('namePrefix'))]",
+              "location": "global",
+              "tags": "[parameters('tags')]",
+              "properties": {
+                "description": "ADX ingestion failures detected — telemetry events may not be reaching analytics.",
+                "severity": 1,
+                "enabled": true,
+                "scopes": [
+                  "[parameters('adxClusterId')]"
+                ],
+                "evaluationFrequency": "PT5M",
+                "windowSize": "PT15M",
+                "criteria": {
+                  "odata.type": "Microsoft.Azure.Monitor.SingleResourceMultipleMetricCriteria",
+                  "allOf": [
+                    {
+                      "name": "IngestionFailures",
+                      "metricName": "FailedIngestion",
+                      "metricNamespace": "Microsoft.Kusto/clusters",
+                      "operator": "GreaterThan",
+                      "threshold": 0,
+                      "timeAggregation": "Total",
+                      "criterionType": "StaticThresholdCriterion"
+                    }
+                  ]
+                },
+                "actions": [
+                  {
+                    "actionGroupId": "[resourceId('Microsoft.Insights/actionGroups', format('{0}-telemetry-alerts-ag', parameters('namePrefix')))]"
+                  }
+                ]
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.Insights/actionGroups', format('{0}-telemetry-alerts-ag', parameters('namePrefix')))]"
+              ]
+            },
+            {
+              "type": "Microsoft.Insights/metricAlerts",
+              "apiVersion": "2018-03-01",
+              "name": "[format('{0}-adx-cluster-stopped', parameters('namePrefix'))]",
+              "location": "global",
+              "tags": "[parameters('tags')]",
+              "properties": {
+                "description": "ADX cluster appears stopped — ingestion pipeline is broken.",
+                "severity": 1,
+                "enabled": true,
+                "scopes": [
+                  "[parameters('adxClusterId')]"
+                ],
+                "evaluationFrequency": "PT15M",
+                "windowSize": "PT1H",
+                "criteria": {
+                  "odata.type": "Microsoft.Azure.Monitor.SingleResourceMultipleMetricCriteria",
+                  "allOf": [
+                    {
+                      "name": "ClusterCPU",
+                      "metricName": "CPU",
+                      "metricNamespace": "Microsoft.Kusto/clusters",
+                      "operator": "LessThanOrEqual",
+                      "threshold": 0,
+                      "timeAggregation": "Average",
+                      "criterionType": "StaticThresholdCriterion"
+                    }
+                  ]
+                },
+                "actions": [
+                  {
+                    "actionGroupId": "[resourceId('Microsoft.Insights/actionGroups', format('{0}-telemetry-alerts-ag', parameters('namePrefix')))]"
+                  }
+                ]
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.Insights/actionGroups', format('{0}-telemetry-alerts-ag', parameters('namePrefix')))]"
+              ]
+            },
+            {
+              "type": "Microsoft.Insights/metricAlerts",
+              "apiVersion": "2018-03-01",
+              "name": "[format('{0}-ai-telemetry-api-errors', parameters('namePrefix'))]",
+              "location": "global",
+              "tags": "[parameters('tags')]",
+              "properties": {
+                "description": "Telemetry API returning >5% error rate — client events may be dropping.",
+                "severity": 2,
+                "enabled": true,
+                "scopes": [
+                  "[parameters('appInsightsId')]"
+                ],
+                "evaluationFrequency": "PT5M",
+                "windowSize": "PT15M",
+                "criteria": {
+                  "odata.type": "Microsoft.Azure.Monitor.SingleResourceMultipleMetricCriteria",
+                  "allOf": [
+                    {
+                      "name": "FailedRequests",
+                      "metricName": "requests/failed",
+                      "metricNamespace": "microsoft.insights/components",
+                      "operator": "GreaterThan",
+                      "threshold": 10,
+                      "timeAggregation": "Count",
+                      "criterionType": "StaticThresholdCriterion"
+                    }
+                  ]
+                },
+                "actions": [
+                  {
+                    "actionGroupId": "[resourceId('Microsoft.Insights/actionGroups', format('{0}-telemetry-alerts-ag', parameters('namePrefix')))]"
+                  }
+                ]
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.Insights/actionGroups', format('{0}-telemetry-alerts-ag', parameters('namePrefix')))]"
+              ]
+            },
+            {
+              "type": "Microsoft.Insights/metricAlerts",
+              "apiVersion": "2018-03-01",
+              "name": "[format('{0}-ai-slow-response', parameters('namePrefix'))]",
+              "location": "global",
+              "tags": "[parameters('tags')]",
+              "properties": {
+                "description": "Web app response time exceeds 5 seconds — possible performance degradation.",
+                "severity": 2,
+                "enabled": true,
+                "scopes": [
+                  "[parameters('appInsightsId')]"
+                ],
+                "evaluationFrequency": "PT5M",
+                "windowSize": "PT15M",
+                "criteria": {
+                  "odata.type": "Microsoft.Azure.Monitor.SingleResourceMultipleMetricCriteria",
+                  "allOf": [
+                    {
+                      "name": "SlowResponse",
+                      "metricName": "requests/duration",
+                      "metricNamespace": "microsoft.insights/components",
+                      "operator": "GreaterThan",
+                      "threshold": 5000,
+                      "timeAggregation": "Average",
+                      "criterionType": "StaticThresholdCriterion"
+                    }
+                  ]
+                },
+                "actions": [
+                  {
+                    "actionGroupId": "[resourceId('Microsoft.Insights/actionGroups', format('{0}-telemetry-alerts-ag', parameters('namePrefix')))]"
+                  }
+                ]
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.Insights/actionGroups', format('{0}-telemetry-alerts-ag', parameters('namePrefix')))]"
+              ]
+            }
+          ],
+          "outputs": {
+            "actionGroupId": {
+              "type": "string",
+              "value": "[resourceId('Microsoft.Insights/actionGroups', format('{0}-telemetry-alerts-ag', parameters('namePrefix')))]"
+            },
+            "actionGroupName": {
+              "type": "string",
+              "value": "[format('{0}-telemetry-alerts-ag', parameters('namePrefix'))]"
+            }
+          }
+        }
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Resources/deployments', 'dataexplorer-deployment')]",
+        "[resourceId('Microsoft.Resources/deployments', 'eventhubs-deployment')]",
+        "[resourceId('Microsoft.Resources/deployments', 'monitoring-deployment')]"
+      ]
+    },
+    {
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2025-04-01",
+      "name": "secrets-deployment",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "keyVaultName": {
+            "value": "[reference(resourceId('Microsoft.Resources/deployments', 'keyvault-deployment'), '2025-04-01').outputs.name.value]"
+          },
+          "secrets": {
+            "value": [
+              {
+                "name": "database-url",
+                "value": "[format('postgresql://{0}:{1}@{2}:5432/blogdb?sslmode=require', parameters('dbAdminUsername'), parameters('dbAdminPassword'), reference(resourceId('Microsoft.Resources/deployments', 'postgresql-deployment'), '2025-04-01').outputs.fqdn.value)]"
+              },
+              {
+                "name": "admin-email",
+                "value": "[parameters('adminEmail')]"
+              },
+              {
+                "name": "appinsights-connection-string",
+                "value": "[reference(resourceId('Microsoft.Resources/deployments', 'monitoring-deployment'), '2025-04-01').outputs.appInsightsConnectionString.value]"
+              },
+              {
+                "name": "azure-storage-account-name",
+                "value": "[reference(resourceId('Microsoft.Resources/deployments', 'storage-deployment'), '2025-04-01').outputs.name.value]"
+              },
+              {
+                "name": "azure-storage-account-key",
+                "value": "[reference(resourceId('Microsoft.Resources/deployments', 'storage-deployment'), '2025-04-01').outputs.primaryKey.value]"
+              },
+              {
+                "name": "acr-login-server",
+                "value": "[reference(resourceId('Microsoft.Resources/deployments', 'acr-deployment'), '2025-04-01').outputs.loginServer.value]"
+              },
+              {
+                "name": "eventhub-connection-string",
+                "value": "[reference(resourceId('Microsoft.Resources/deployments', 'eventhubs-deployment'), '2025-04-01').outputs.sendConnectionString.value]"
+              },
+              {
+                "name": "eventhub-namespace",
+                "value": "[reference(resourceId('Microsoft.Resources/deployments', 'eventhubs-deployment'), '2025-04-01').outputs.namespaceFqdn.value]"
+              },
+              {
+                "name": "eventhub-name",
+                "value": "[reference(resourceId('Microsoft.Resources/deployments', 'eventhubs-deployment'), '2025-04-01').outputs.telemetryEventHubName.value]"
+              },
+              {
+                "name": "eventhub-otel-connection-string",
+                "value": "[reference(resourceId('Microsoft.Resources/deployments', 'eventhubs-deployment'), '2025-04-01').outputs.otelConnectionString.value]"
+              },
+              {
+                "name": "adx-cluster-uri",
+                "value": "[reference(resourceId('Microsoft.Resources/deployments', 'dataexplorer-deployment'), '2025-04-01').outputs.clusterUri.value]"
+              }
+            ]
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.40.2.10011",
+              "templateHash": "12512609314619022699"
+            }
+          },
+          "parameters": {
+            "keyVaultName": {
+              "type": "string",
+              "metadata": {
+                "description": "Key Vault name to store secrets in"
+              }
+            },
+            "secrets": {
+              "type": "array",
+              "metadata": {
+                "description": "Array of secret objects with name and value"
+              }
+            }
+          },
+          "resources": [
+            {
+              "copy": {
+                "name": "kvSecrets",
+                "count": "[length(parameters('secrets'))]"
+              },
+              "type": "Microsoft.KeyVault/vaults/secrets",
+              "apiVersion": "2023-07-01",
+              "name": "[format('{0}/{1}', parameters('keyVaultName'), parameters('secrets')[copyIndex()].name)]",
+              "properties": {
+                "value": "[parameters('secrets')[copyIndex()].value]"
+              }
+            }
+          ]
+        }
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Resources/deployments', 'acr-deployment')]",
+        "[resourceId('Microsoft.Resources/deployments', 'dataexplorer-deployment')]",
+        "[resourceId('Microsoft.Resources/deployments', 'eventhubs-deployment')]",
+        "[resourceId('Microsoft.Resources/deployments', 'keyvault-deployment')]",
+        "[resourceId('Microsoft.Resources/deployments', 'monitoring-deployment')]",
+        "[resourceId('Microsoft.Resources/deployments', 'postgresql-deployment')]",
+        "[resourceId('Microsoft.Resources/deployments', 'storage-deployment')]"
+      ]
+    }
+  ],
+  "outputs": {
+    "aksClusterName": {
+      "type": "string",
+      "value": "[reference(resourceId('Microsoft.Resources/deployments', 'aks-deployment'), '2025-04-01').outputs.clusterName.value]"
+    },
+    "acrLoginServer": {
+      "type": "string",
+      "value": "[reference(resourceId('Microsoft.Resources/deployments', 'acr-deployment'), '2025-04-01').outputs.loginServer.value]"
+    },
+    "keyVaultName": {
+      "type": "string",
+      "value": "[reference(resourceId('Microsoft.Resources/deployments', 'keyvault-deployment'), '2025-04-01').outputs.name.value]"
+    },
+    "keyVaultUri": {
+      "type": "string",
+      "value": "[reference(resourceId('Microsoft.Resources/deployments', 'keyvault-deployment'), '2025-04-01').outputs.uri.value]"
+    },
+    "postgresqlFqdn": {
+      "type": "string",
+      "value": "[reference(resourceId('Microsoft.Resources/deployments', 'postgresql-deployment'), '2025-04-01').outputs.fqdn.value]"
+    },
+    "appInsightsConnectionString": {
+      "type": "string",
+      "value": "[reference(resourceId('Microsoft.Resources/deployments', 'monitoring-deployment'), '2025-04-01').outputs.appInsightsConnectionString.value]"
+    },
+    "storageAccountName": {
+      "type": "string",
+      "value": "[reference(resourceId('Microsoft.Resources/deployments', 'storage-deployment'), '2025-04-01').outputs.name.value]"
+    },
+    "eventHubNamespace": {
+      "type": "string",
+      "value": "[reference(resourceId('Microsoft.Resources/deployments', 'eventhubs-deployment'), '2025-04-01').outputs.namespaceFqdn.value]"
+    },
+    "eventHubName": {
+      "type": "string",
+      "value": "[reference(resourceId('Microsoft.Resources/deployments', 'eventhubs-deployment'), '2025-04-01').outputs.telemetryEventHubName.value]"
+    },
+    "adxClusterUri": {
+      "type": "string",
+      "value": "[reference(resourceId('Microsoft.Resources/deployments', 'dataexplorer-deployment'), '2025-04-01').outputs.clusterUri.value]"
+    },
+    "adxDatabaseName": {
+      "type": "string",
+      "value": "[reference(resourceId('Microsoft.Resources/deployments', 'dataexplorer-deployment'), '2025-04-01').outputs.databaseName.value]"
+    }
+  }
+}

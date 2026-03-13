@@ -3,6 +3,7 @@ kind: Kustomization
 
 resources:
   - namespace.yaml
+  - secrets-provider.yaml
   - web-deployment.yaml
   - web-service.yaml
   - otel-collector.yaml
