@@ -188,6 +188,17 @@ module alerts 'modules/alerts.bicep' = {
 }
 
 // ============================================
+// Azure Communication Services (Email)
+// ============================================
+module acs 'modules/acs.bicep' = {
+  name: 'acs-deployment'
+  params: {
+    namePrefix: namePrefix
+    tags: tags
+  }
+}
+
+// ============================================
 // Store secrets in Key Vault
 // ============================================
 module secrets 'modules/keyvault-secrets.bicep' = {
@@ -239,6 +250,14 @@ module secrets 'modules/keyvault-secrets.bicep' = {
         name: 'adx-cluster-uri'
         value: dataExplorer.outputs.clusterUri
       }
+      {
+        name: 'acs-connection-string'
+        value: acs.outputs.connectionString
+      }
+      {
+        name: 'acs-sender-address'
+        value: acs.outputs.defaultSenderAddress
+      }
     ]
   }
 }
@@ -257,3 +276,5 @@ output eventHubNamespace string = eventHubs.outputs.namespaceFqdn
 output eventHubName string = eventHubs.outputs.telemetryEventHubName
 output adxClusterUri string = dataExplorer.outputs.clusterUri
 output adxDatabaseName string = dataExplorer.outputs.databaseName
+output acsName string = acs.outputs.name
+output acsSenderAddress string = acs.outputs.defaultSenderAddress

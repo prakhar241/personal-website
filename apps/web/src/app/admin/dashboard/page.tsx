@@ -10,9 +10,13 @@ import {
   BarChart3,
   Bell,
   TrendingUp,
+  Mail,
+  Send,
+  Loader2,
 } from "lucide-react";
 import { formatDate } from "@/lib/utils";
 import Link from "next/link";
+import toast from "react-hot-toast";
 
 interface Analytics {
   overview: {
@@ -24,6 +28,8 @@ interface Analytics {
     totalLikes: number;
     totalViews: number;
     recentViews: number;
+    totalSubscribers: number;
+    recentSubscribers: number;
   };
   postStats: Array<{
     id: string;
@@ -47,6 +53,7 @@ export default function AdminDashboardPage() {
   const [analytics, setAnalytics] = useState<Analytics | null>(null);
   const [loading, setLoading] = useState(true);
   const [days, setDays] = useState(30);
+  const [digestLoading, setDigestLoading] = useState(false);
 
   useEffect(() => {
     async function fetchAnalytics() {
@@ -112,7 +119,7 @@ export default function AdminDashboardPage() {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-8">
         <StatCard
           icon={<FileText className="h-5 w-5" />}
           label="Total Posts"
@@ -143,6 +150,16 @@ export default function AdminDashboardPage() {
           }
           color="green"
           highlight={overview.unreadComments > 0}
+        />
+        <StatCard
+          icon={<Mail className="h-5 w-5" />}
+          label="Subscribers"
+          value={overview.totalSubscribers}
+          sub={
+            overview.recentSubscribers > 0
+              ? `+${overview.recentSubscribers} new`
+              : undefined
+          }
         />
       </div>
 
@@ -230,6 +247,50 @@ export default function AdminDashboardPage() {
           </div>
         </div>
       </div>
+
+      {/* Send Digest */}
+      {overview.totalSubscribers > 0 && (
+        <div className="mt-6 rounded-xl border border-border bg-card p-5">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="flex items-center gap-2 text-lg font-semibold text-foreground">
+                <Send className="h-5 w-5" />
+                Weekly Digest
+              </h2>
+              <p className="text-sm text-muted-foreground mt-1">
+                Send a digest email to subscribers with recent posts
+              </p>
+            </div>
+            <button
+              onClick={async () => {
+                if (!confirm("Send weekly digest to all digest subscribers?")) return;
+                setDigestLoading(true);
+                try {
+                  const res = await fetch("/api/admin/email-digest", { method: "POST" });
+                  const data = await res.json();
+                  if (res.ok) {
+                    toast.success(`Digest sent to ${data.sent} subscriber(s)`);
+                  } else {
+                    toast.error(data.error || "Failed to send digest");
+                  }
+                } catch {
+                  toast.error("Network error");
+                }
+                setDigestLoading(false);
+              }}
+              disabled={digestLoading}
+              className="inline-flex items-center gap-2 rounded-lg bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700 transition-colors disabled:opacity-50"
+            >
+              {digestLoading ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Send className="h-4 w-4" />
+              )}
+              Send Digest
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Unread Comments */}
       {recentComments.length > 0 && (

@@ -5,6 +5,7 @@ import prisma from "@/lib/prisma";
 import { updatePostSchema } from "@/lib/validations";
 import { slugify } from "@/lib/utils";
 import { markdownToHtml } from "@/lib/markdown";
+import { sendBulkPostNotifications } from "@/lib/email";
 
 // GET /api/posts/[slug] - get single post
 export async function GET(
@@ -93,10 +94,9 @@ export async function PATCH(
     }
 
     // Set publishedAt when publishing
-    if (
-      validated.status === "PUBLISHED" &&
-      existing.status === "DRAFT"
-    ) {
+    const isNewlyPublished =
+      validated.status === "PUBLISHED" && existing.status === "DRAFT";
+    if (isNewlyPublished) {
       data.publishedAt = new Date();
     }
 
@@ -104,6 +104,13 @@ export async function PATCH(
       where: { slug: params.slug },
       data,
     });
+
+    // Notify subscribers on DRAFT → PUBLISHED transition only
+    if (isNewlyPublished) {
+      sendBulkPostNotifications(post).catch((err) =>
+        console.error("Failed to send post notifications:", err)
+      );
+    }
 
     return NextResponse.json(post);
   } catch (error: any) {

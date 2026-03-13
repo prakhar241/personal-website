@@ -34,5 +34,11 @@ export const updateStaticPageSchema = createStaticPageSchema.partial();
 export type CreatePostInput = z.infer<typeof createPostSchema>;
 export type UpdatePostInput = z.infer<typeof updatePostSchema>;
 export type CreateCommentInput = z.infer<typeof createCommentSchema>;
+export const subscribeSchema = z.object({
+  email: z.string().email("Invalid email address").min(1, "Email is required"),
+  notifyMode: z.enum(["INSTANT", "DIGEST", "BOTH"]).default("INSTANT"),
+});
+
 export type CreateStaticPageInput = z.infer<typeof createStaticPageSchema>;
 export type UpdateStaticPageInput = z.infer<typeof updateStaticPageSchema>;
+export type SubscribeInput = z.infer<typeof subscribeSchema>;

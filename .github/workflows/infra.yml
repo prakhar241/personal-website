@@ -45,6 +45,7 @@ jobs:
             --tags project=personal-blog environment=${{ github.event.inputs.environment }} managedBy=bicep
 
       - name: Deploy Bicep
+        id: deploy
         uses: azure/arm-deploy@v2
         with:
           subscriptionId: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
@@ -58,6 +59,68 @@ jobs:
           deploymentName: blog-infra-${{ github.run_number }}
           failOnStdErr: false
 
-      - name: Output deployment results
+      - name: Verify critical resources
         run: |
-          echo "Infrastructure deployed successfully for ${{ github.event.inputs.environment }}"
+          ENV="${{ github.event.inputs.environment }}"
+          RG="rg-blog-${ENV}"
+          echo "=== Verifying deployment for ${ENV} ==="
+
+          # Check deployment status
+          STATUS=$(az deployment group show -g $RG -n blog-infra-${{ github.run_number }} --query "properties.provisioningState" -o tsv)
+          echo "Deployment status: $STATUS"
+          if [ "$STATUS" != "Succeeded" ]; then
+            echo "::error::Deployment did not succeed. Status: $STATUS"
+            az deployment operation group list -g $RG -n blog-infra-${{ github.run_number }} \
+              --query "[?properties.provisioningState=='Failed'].{resource:properties.targetResource.resourceName,code:properties.statusMessage.error.code,msg:properties.statusMessage.error.message}" -o table
+            exit 1
+          fi
+
+          # Verify ACS resource exists and is linked to email
+          echo "--- Azure Communication Services ---"
+          ACS_NAME=$(az communication show --name "blog-${ENV}-acs" -g $RG --query "name" -o tsv 2>/dev/null || true)
+          if [ -z "$ACS_NAME" ]; then
+            echo "::error::ACS resource not found"
+            exit 1
+          fi
+          echo "ACS: $ACS_NAME ✓"
+
+          # Verify Key Vault secrets exist
+          echo "--- Key Vault Secrets ---"
+          KV_NAME="blog-${ENV}-kv"
+          EXPECTED_SECRETS=("database-url" "acs-connection-string" "acs-sender-address" "eventhub-connection-string" "appinsights-connection-string")
+          for secret in "${EXPECTED_SECRETS[@]}"; do
+            EXISTS=$(az keyvault secret show --vault-name $KV_NAME --name $secret --query "name" -o tsv 2>/dev/null || true)
+            if [ -z "$EXISTS" ]; then
+              echo "::warning::Secret '$secret' not found in Key Vault"
+            else
+              echo "Secret: $secret ✓"
+            fi
+          done
+
+          # Verify AKS cluster is running
+          echo "--- AKS Cluster ---"
+          AKS_STATE=$(az aks show --name "blog-${ENV}-aks" -g $RG --query "provisioningState" -o tsv 2>/dev/null || true)
+          echo "AKS state: ${AKS_STATE:-NOT FOUND}"
+
+          echo "=== Verification complete ==="
+
+      - name: Output deployment results
+        if: always()
+        run: |
+          ENV="${{ github.event.inputs.environment }}"
+          RG="rg-blog-${ENV}"
+          echo "## Deployment Summary for ${ENV}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          # Get outputs
+          OUTPUTS=$(az deployment group show -g $RG -n blog-infra-${{ github.run_number }} --query "properties.outputs" -o json 2>/dev/null || echo "{}")
+          echo "| Resource | Value |" >> $GITHUB_STEP_SUMMARY
+          echo "|----------|-------|" >> $GITHUB_STEP_SUMMARY
+          echo "| AKS Cluster | $(echo $OUTPUTS | jq -r '.aksClusterName.value // "N/A"') |" >> $GITHUB_STEP_SUMMARY
+          echo "| ACR | $(echo $OUTPUTS | jq -r '.acrLoginServer.value // "N/A"') |" >> $GITHUB_STEP_SUMMARY
+          echo "| Key Vault | $(echo $OUTPUTS | jq -r '.keyVaultName.value // "N/A"') |" >> $GITHUB_STEP_SUMMARY
+          echo "| PostgreSQL | $(echo $OUTPUTS | jq -r '.postgresqlFqdn.value // "N/A"') |" >> $GITHUB_STEP_SUMMARY
+          echo "| Event Hub | $(echo $OUTPUTS | jq -r '.eventHubNamespace.value // "N/A"') |" >> $GITHUB_STEP_SUMMARY
+          echo "| ADX | $(echo $OUTPUTS | jq -r '.adxClusterUri.value // "N/A"') |" >> $GITHUB_STEP_SUMMARY
+          echo "| ACS | $(echo $OUTPUTS | jq -r '.acsName.value // "N/A"') |" >> $GITHUB_STEP_SUMMARY
+          echo "| ACS Sender | $(echo $OUTPUTS | jq -r '.acsSenderAddress.value // "N/A"') |" >> $GITHUB_STEP_SUMMARY

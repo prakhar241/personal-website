@@ -7,6 +7,8 @@ import { getSiteSettings } from "@/lib/settings";
 export const dynamic = 'force-dynamic';
 import { PostCard } from "@/components/blog/PostCard";
 import { ArrowRight } from "lucide-react";
+import { SubscribeForm } from "@/components/blog/SubscribeForm";
+import { SubscribeToast } from "@/components/blog/SubscribeToast";
 
 export default async function HomePage() {
   const [recentPosts, settings] = await Promise.all([
@@ -62,6 +64,11 @@ export default async function HomePage() {
           </div>
         </section>
 
+        {/* Subscribe Section */}
+        <section className="mx-auto max-w-5xl px-4 pb-12">
+          <SubscribeForm />
+        </section>
+
         {/* Recent Posts */}
         <section className="mx-auto max-w-5xl px-4 pb-16">
           <div className="flex items-center justify-between mb-8">
@@ -90,6 +97,7 @@ export default async function HomePage() {
         </section>
       </main>
       <Footer />
+      <SubscribeToast />
     </div>
   );
 }

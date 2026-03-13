@@ -14,6 +14,8 @@ import {
   LayoutDashboard,
   PenSquare,
   Settings,
+  Mail,
+  FileText,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { strings } from "@/lib/strings";
@@ -97,6 +99,20 @@ export function Navbar() {
                 <Settings className="h-4 w-4" />
                 Settings
               </Link>
+              <Link
+                href="/admin/subscribers"
+                className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1"
+              >
+                <Mail className="h-4 w-4" />
+                Subscribers
+              </Link>
+              <Link
+                href="/admin/email-templates"
+                className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1"
+              >
+                <FileText className="h-4 w-4" />
+                Templates
+              </Link>
             </>
           )}
 
@@ -179,6 +195,20 @@ export function Navbar() {
                 onClick={() => setMobileMenuOpen(false)}
               >
                 Settings
+              </Link>
+              <Link
+                href="/admin/subscribers"
+                className="block text-sm font-medium text-muted-foreground hover:text-foreground"
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                Subscribers
+              </Link>
+              <Link
+                href="/admin/email-templates"
+                className="block text-sm font-medium text-muted-foreground hover:text-foreground"
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                Email Templates
               </Link>
             </>
           )}
