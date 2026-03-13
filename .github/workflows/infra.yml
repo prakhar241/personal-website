@@ -39,9 +39,11 @@ jobs:
 
       - name: Create Resource Group
         run: |
+          # Get existing location or default to centralus
+          EXISTING_LOCATION=$(az group show --name rg-blog-${{ github.event.inputs.environment }} --query location -o tsv 2>/dev/null || echo "centralus")
           az group create \
             --name rg-blog-${{ github.event.inputs.environment }} \
-            --location eastus \
+            --location "$EXISTING_LOCATION" \
             --tags project=personal-blog environment=${{ github.event.inputs.environment }} managedBy=bicep
 
       - name: Deploy Bicep
